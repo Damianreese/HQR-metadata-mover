@@ -1,0 +1,10 @@
+# Your own data: retrieved client metadata, backups, deploy history and templates. Never commit these.
+packages/
+templates.json
+templates.json.bak
+
+# Recreated by the tool on first run.
+.sf-workspace/
+
+# Built zips (attach them to a GitHub Release instead).
+*.zip

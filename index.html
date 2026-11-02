@@ -1,0 +1,1549 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Metadata Mover</title>
+<style>
+:root {
+  --bg: #f5f6f8; --card: #ffffff; --text: #1d2330; --muted: #677085; --line: #e1e4ea;
+  --accent: #0b6bcb; --accent-ink: #ffffff; --accent-soft: #e6f0fb;
+  --ok: #1b7f4b; --ok-soft: #e3f4ea; --warn: #9a5b00; --warn-soft: #fff2db;
+  --bad: #b42318; --bad-soft: #fde8e6; --row-hover: #f2f5fa; --code: #f0f2f5;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12151b; --card: #1a1f27; --text: #e6e9ef; --muted: #98a1b3; --line: #2c3340;
+    --accent: #4c9be8; --accent-ink: #0b1220; --accent-soft: #1d2b3d;
+    --ok: #5cc98d; --ok-soft: #173326; --warn: #e8b04c; --warn-soft: #362a14;
+    --bad: #f07b6f; --bad-soft: #3a1c1a; --row-hover: #212835; --code: #11151b;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 "Segoe UI", system-ui, -apple-system, sans-serif; }
+header { display: flex; align-items: center; gap: 12px; padding: 12px 20px; background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+header h1 { font-size: 17px; margin: 0; font-weight: 650; }
+header .sp { flex: 1; }
+main { max-width: 1240px; margin: 0 auto; padding: 18px 16px 60px; display: grid; gap: 16px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+.card h2 { margin: 0 0 12px; font-size: 15px; display: flex; align-items: center; gap: 10px; }
+.num { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: inline-grid; place-items: center; font-size: 13px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.row + .row { margin-top: 10px; }
+label.f { display: grid; gap: 3px; font-size: 12px; color: var(--muted); }
+input, select, textarea, button { font: inherit; color: inherit; }
+input[type=text], input[type=search], input[type=datetime-local], select, textarea {
+  background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; min-height: 32px; }
+textarea { width: 100%; font-family: Consolas, monospace; font-size: 12px; }
+button { border: 1px solid var(--line); background: var(--card); border-radius: 6px; padding: 6px 12px; min-height: 32px; cursor: pointer; }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+button.danger { color: var(--bad); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.link { border: none; background: none; color: var(--accent); padding: 0 4px; min-height: 0; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; background: var(--code); color: var(--muted); white-space: nowrap; }
+.badge.prod { background: var(--bad-soft); color: var(--bad); font-weight: 600; }
+.badge.sbx { background: var(--ok-soft); color: var(--ok); }
+.badge.new { background: var(--accent-soft); color: var(--accent); }
+.badge.upd { background: var(--ok-soft); color: var(--ok); }
+.badge.warn { background: var(--warn-soft); color: var(--warn); }
+.orgs { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: start; }
+.orgbox { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: grid; gap: 6px; }
+.orgbox select { width: 100%; }
+.orgmeta { font-size: 12px; color: var(--muted); min-height: 18px; }
+.step1 { display: grid; grid-template-columns: 1fr 270px; gap: 16px; align-items: start; }
+.orgside { display: grid; gap: 8px; border: 3px solid var(--accent); border-radius: 10px; padding: 12px; background: var(--accent-soft); }
+.orgside .sideform, .orgside > button { background: var(--card); }
+.orgside > button { justify-self: stretch; text-align: left; }
+.connhead { cursor: pointer; user-select: none; font-weight: 600; font-size: 13px; padding: 2px 0; display: flex; align-items: center; }
+.connhead .chev { margin-left: auto; color: var(--muted); font-size: 13px; transition: transform .15s; }
+#connBox.closed .connhead .chev { transform: rotate(-90deg); }
+#connBox.closed .connbody { display: none; }
+fieldset.filters { border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px 12px; margin: 14px 0 0; }
+fieldset.filters legend { font-size: 12px; font-weight: 600; color: var(--muted); padding: 0 6px; }
+fieldset.filters .f { display: grid; gap: 3px; font-size: 12px; color: var(--muted); }
+label.chk { display: flex; gap: 5px; align-items: center; font-size: 12px; color: var(--muted); cursor: pointer; }
+label.chk input { margin: 0; }
+.connlist { display: grid; gap: 6px; margin: 6px 0 8px; max-height: 220px; overflow: auto; }
+.connlist .c { font-size: 12px; line-height: 1.3; }
+.connlist .c b { font-size: 13px; }
+.sideform { display: grid; gap: 8px; border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+.sideform input, .sideform select { width: 100%; }
+@media (max-width: 900px) { .step1 { grid-template-columns: 1fr; } }
+.stephead { cursor: pointer; user-select: none; }
+.stephead .chev { margin-left: auto; color: var(--muted); font-size: 13px; transition: transform .15s; }
+.step.collapsed .stephead { margin-bottom: 0; }
+.step.collapsed .stephead .chev { transform: rotate(-90deg); }
+.step.collapsed .stepbody { display: none; }
+.step.collapsed { cursor: pointer; }
+.step.collapsed:hover { border-color: var(--accent); }
+.stepsum { font-weight: 400; font-size: 13px; color: var(--muted); }
+.step:not(.collapsed) .stepsum { display: none; }
+.histrow.archived { opacity: .6; }
+.step.collapsed #selCount { display: none; }
+@media (max-width: 760px) { .orgs { grid-template-columns: 1fr; } }
+.badge.dev { background: var(--accent-soft); color: var(--accent); }
+.notice { border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+.notice.warn { background: var(--warn-soft); color: var(--warn); }
+.notice.bad { background: var(--bad-soft); color: var(--bad); }
+.notice.ok { background: var(--ok-soft); color: var(--ok); }
+.notice.info { background: var(--accent-soft); color: var(--accent); }
+details.types summary { cursor: pointer; color: var(--accent); }
+.typegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin-top: 10px; }
+.typegroup { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.typegroup h4 { margin: 0 0 6px; font-size: 12px; display: flex; justify-content: space-between; }
+.typegroup label { display: flex; gap: 6px; align-items: center; font-size: 13px; }
+.tablewrap { max-height: 520px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; margin-top: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { position: sticky; top: 0; background: var(--card); font-weight: 600; font-size: 12px; color: var(--muted); cursor: pointer; user-select: none; white-space: nowrap; }
+tbody tr:hover { background: var(--row-hover); }
+td.name { word-break: break-word; }
+td.date { white-space: nowrap; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; gap: 6px; align-items: center; border: 1px solid var(--line); border-radius: 999px; padding: 2px 4px 2px 10px; font-size: 12px; background: var(--code); }
+.chip button { min-height: 0; padding: 0 6px; border: none; background: none; color: var(--muted); }
+.selgroup { margin-bottom: 8px; }
+.selgroup > div:first-child { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+.selbox { max-height: 260px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+pre { background: var(--code); border-radius: 6px; padding: 10px; overflow: auto; font-size: 12px; max-height: 300px; margin: 6px 0 0; }
+.bar { height: 8px; border-radius: 4px; background: var(--code); overflow: hidden; }
+.bar > div { height: 100%; background: var(--accent); transition: width .3s; }
+.bar.bad > div { background: var(--bad); }
+.progress { display: grid; grid-template-columns: 110px 1fr 90px; gap: 8px; align-items: center; font-size: 12px; margin-top: 8px; }
+.hist { display: grid; gap: 8px; }
+.histrow { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; display: grid; grid-template-columns: 1fr auto; gap: 6px 14px; align-items: center; }
+.histmain { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; min-width: 0; }
+.histbtns { display: flex; gap: 6px; justify-content: flex-end; }
+.histline2, .rbpoints { grid-column: 1 / -1; }
+.histline2 { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+@media (max-width: 900px) { .histrow { grid-template-columns: 1fr; } .histbtns { justify-content: flex-start; flex-wrap: wrap; } }
+.histrow .t { font-weight: 600; }
+.rbpoints { display: grid; gap: 4px; border-top: 1px dashed var(--line); padding-top: 6px; }
+.rbrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+#log { font-family: Consolas, monospace; font-size: 12px; white-space: pre-wrap; max-height: 220px; overflow: auto; }
+.spin { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: s 0.8s linear infinite; vertical-align: -2px; }
+@keyframes s { to { transform: rotate(360deg); } }
+[hidden] { display: none !important; }
+dialog#dlg { border: 1px solid var(--line); border-radius: 12px; padding: 20px; width: min(520px, calc(100vw - 32px)); background: var(--card); color: var(--text); box-shadow: 0 12px 40px rgba(0,0,0,.25); }
+dialog#dlg::backdrop { background: rgba(15, 20, 30, .45); }
+#dlgTitle { margin: 0 0 8px; font-size: 15px; }
+#dlgMsg { white-space: pre-wrap; font-size: 14px; max-height: 50vh; overflow: auto; }
+#dlgInput { width: 100%; margin-top: 12px; }
+.dlgbtns { justify-content: flex-end; margin-top: 16px; }
+button.danger-fill { background: var(--bad); border-color: var(--bad); color: #fff; }
+#staleBanner { display: flex; gap: 10px; align-items: center; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Metadata Mover</h1>
+  <span id="sfStatus" class="badge">checking sf…</span>
+  <span class="sp"></span>
+  <button id="btnStop" class="danger" title="Stop the local server">Stop Server</button>
+</header>
+
+<dialog id="dlg">
+  <h3 id="dlgTitle">Metadata Mover</h3>
+  <div id="dlgMsg"></div>
+  <input type="text" id="dlgInput" hidden>
+  <div class="row dlgbtns">
+    <button id="dlgCancel" type="button">Cancel</button>
+    <button id="dlgOk" type="button" class="primary">OK</button>
+  </div>
+</dialog>
+
+<main>
+  <div id="staleBanner" class="notice bad" hidden>
+    <strong>Metadata Mover was updated.</strong> Restart it to finish: close its console window, then double-click Start-MetadataMover.cmd. Until then, newer buttons won't work.
+  </div>
+  <div id="sfMissing" class="notice warn" hidden>
+    The Salesforce CLI (<code>sf</code>) wasn't found. Install it from
+    <a href="https://developer.salesforce.com/tools/salesforcecli" target="_blank" rel="noopener">developer.salesforce.com/tools/salesforcecli</a>,
+    then close this tab and start Metadata Mover again.
+  </div>
+
+  <!-- 1. Orgs -->
+  <section class="card step" id="step1">
+    <h2 class="stephead"><span class="num">1</span> Orgs <span class="stepsum" id="sum1"></span><span class="chev">▾</span></h2>
+    <div class="stepbody">
+    <div class="step1">
+    <div class="orgs">
+      <div class="orgbox">
+        <strong>Source <span class="muted small">(where you made changes)</span></strong>
+        <select id="srcOrg"></select>
+        <div id="srcMeta" class="orgmeta"></div>
+      </div>
+      <button id="btnSwap" title="Swap source and target" style="align-self:center">⇄</button>
+      <div class="orgbox">
+        <strong>Target <span class="muted small">(where they go)</span></strong>
+        <select id="tgtOrg"></select>
+        <div id="tgtMeta" class="orgmeta"></div>
+      </div>
+    </div>
+    <aside class="orgside">
+      <div id="connBox">
+        <div class="connhead" id="connHead">Connected Orgs (<span id="connCount">0</span>)<span class="chev">▾</span></div>
+        <div class="connbody">
+          <div id="connList" class="connlist"></div>
+          <button id="btnRefreshOrgs" class="small">Refresh Org List</button>
+        </div>
+      </div>
+      <button id="btnShowLogin">Connect an Org…</button>
+      <div id="loginForm" class="sideform" hidden>
+        <label class="f">Alias <input type="text" id="loginAlias" placeholder="e.g. uat"></label>
+        <label class="f">Org Type
+          <select id="loginEnv">
+            <option value="custom">My Domain URL…</option>
+            <option value="https://test.salesforce.com">Sandbox</option>
+            <option value="https://login.salesforce.com">Production / Developer Edition</option>
+          </select>
+        </label>
+        <label class="f" id="loginUrlWrap">URL <input type="text" id="loginUrl" placeholder="https://acme--uat.sandbox.my.salesforce.com"></label>
+        <button id="btnLogin" class="primary">Open Login</button>
+        <span id="loginStatus" class="small muted"></span>
+      </div>
+      <button id="btnShowLogout">Disconnect an Org…</button>
+      <div id="logoutForm" class="sideform" hidden>
+        <select id="logoutOrg" title="Remove a saved org connection from the Salesforce CLI"></select>
+        <button id="btnLogout" class="danger">Disconnect</button>
+      </div>
+    </aside>
+    </div>
+    <div class="row" style="margin-top:12px"><button class="primary" data-goto="2">Continue to Find Changes →</button></div>
+    </div>
+  </section>
+
+  <!-- 2. Find changes -->
+  <section class="card step collapsed" id="step2">
+    <h2 class="stephead"><span class="num">2</span> Find Changes <span class="stepsum" id="sum2"></span><span class="chev">▾</span></h2>
+    <div class="stepbody">
+    <div class="row" style="margin-bottom:10px">
+      <label class="f">Template
+        <select id="tplSelect" title="Saved metadata types, filters and (optionally) components"></select></label>
+      <button id="btnTplApply" style="align-self:end">Apply</button>
+      <button id="btnTplSave" style="align-self:end">Save as New…</button>
+      <button id="btnTplUpdate" style="align-self:end">Update</button>
+      <button id="btnTplDelete" class="danger" style="align-self:end">Delete</button>
+      <span id="tplInfo" class="small muted" style="align-self:end"></span>
+    </div>
+    <details class="types" id="typesDetails">
+      <summary>Metadata Types to Scan (<span id="typeCount">0</span> selected)</summary>
+      <div class="typegrid" id="typeGrid"></div>
+      <div class="row">
+        <label class="f" style="flex:1">Extra Types (comma-separated API names)
+          <input type="text" id="extraTypes" placeholder="e.g. Territory2Model, PlatformEventChannel"></label>
+      </div>
+    </details>
+    <div class="row">
+      <button id="btnScan" class="primary">Scan Orgs</button>
+      <span id="scanStatus" class="small muted"></span>
+    </div>
+    <div id="scanWarnings" class="notice warn" style="margin-top:10px" hidden></div>
+
+    <div id="scanResults" hidden>
+      <fieldset class="filters">
+        <legend>Filter Results</legend>
+        <div class="row">
+          <div class="f">
+            <label class="chk" title="Untick to show everything, whatever its date"><input type="checkbox" id="onlyChanged" checked> Changed Since</label>
+            <input type="datetime-local" id="since">
+          </div>
+          <label class="f">Modified By <select id="byFilter"></select></label>
+          <label class="f">Target Status
+            <select id="statusFilter">
+              <option value="">Any</option><option value="new">New in target</option>
+              <option value="upd">Update</option><option value="warn">Target newer ⚠</option>
+            </select>
+          </label>
+          <label class="f" style="flex:1;min-width:160px;max-width:340px">Search <input type="search" id="search" placeholder="type or name"></label>
+          <label class="chk" style="align-self:end;padding-bottom:7px"><input type="checkbox" id="hideManaged" checked> Hide managed-package components</label>
+        </div>
+      </fieldset>
+      <div id="siteBox" class="row" style="margin-top:10px" hidden>
+        <span class="small muted">Experience Sites (adds the site's Network, CustomSite, bundle, menus…):</span>
+        <div id="siteChips" class="chips"></div>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr>
+            <th style="width:30px"><input type="checkbox" id="checkAll" title="Select all shown"></th>
+            <th data-sort="type">Type</th><th data-sort="fullName">Name</th>
+            <th data-sort="lastModifiedDate">Modified</th><th data-sort="lastModifiedByName">By</th>
+            <th data-sort="status">In Target</th>
+          </tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div id="rowInfo" class="small muted" style="margin-top:6px"></div>
+    </div>
+    <div class="row" style="margin-top:12px"><button class="primary" data-goto="3">Continue to Package →</button>
+      <span class="small muted">You can also add components by hand in step 3.</span></div>
+    </div>
+  </section>
+
+  <!-- 3. Package -->
+  <section class="card step collapsed" id="step3">
+    <h2 class="stephead"><span class="num">3</span> Package <span id="selCount" class="badge">0 components</span> <span class="stepsum" id="sum3"></span><span class="chev">▾</span></h2>
+    <div class="stepbody">
+    <div id="selEmpty" class="muted small">Tick components in step 2, or add them by hand below.</div>
+    <div id="selBox" class="selbox" hidden></div>
+    <div class="row">
+      <label class="f" style="flex:1">Add by Hand — one per line as <code>Type: Name</code>
+        <textarea id="manualAdd" rows="2" placeholder="CustomField: Account.Region__c&#10;ExperienceBundle: Customer_Portal1"></textarea></label>
+    </div>
+    <div class="row">
+      <button id="btnManualAdd">Add</button>
+      <button id="btnClearSel" class="danger">Clear All</button>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <label class="f">Package Name <input type="text" id="pkgName" size="28" placeholder="e.g. Portal-Phase2"></label>
+      <label class="f" style="flex:1">Note (Optional) <input type="text" id="pkgNote" placeholder="e.g. Phase 2 portal changes"></label>
+    </div>
+    <div class="row">
+      <button id="btnBuild" class="primary">Build Package from Source</button>
+      <button id="btnDownloadXml">Download package.xml</button>
+      <span id="buildStatus" class="small muted"></span>
+    </div>
+    <details style="margin-top:10px"><summary class="small muted" style="cursor:pointer">Preview package.xml</summary><pre id="xmlPreview"></pre></details>
+    <div id="buildResult" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+  <!-- 4. Validate & deploy -->
+  <section class="card step collapsed" id="step4">
+    <h2 class="stephead"><span class="num">4</span> Validate &amp; Deploy <span class="stepsum" id="sum4"></span><span class="chev">▾</span></h2>
+    <div class="stepbody">
+    <div id="pkgCurrent" class="notice info">No package yet. Build one in step 3, or pick one from Package History.</div>
+    <div class="row" style="margin-top:12px">
+      <label class="f">Test Level
+        <select id="testLevel">
+          <option value="NoTestRun">No tests (sandbox, or prod without Apex)</option>
+          <option value="RunSpecifiedTests">Run specified tests</option>
+          <option value="RunLocalTests">Run local tests</option>
+          <option value="RunAllTestsInOrg">Run all tests</option>
+        </select>
+      </label>
+      <label class="f" id="testsWrap" style="flex:1" hidden>Test Classes (comma-separated)
+        <input type="text" id="tests" placeholder="MyClassTest, OtherTest"></label>
+      <button id="btnFindTests" class="link" hidden style="align-self:end">Use Test Classes in Package</button>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button id="btnValidate" class="primary">Validate</button>
+      <button id="btnQuick" title="Deploy the last successful validation without re-running tests">Quick Deploy</button>
+      <button id="btnDeploy">Deploy</button>
+      <button id="btnCancel" class="danger" hidden>Cancel</button>
+      <label class="small" title="Saves the target's current versions of these components first, so you can undo the deploy"><input type="checkbox" id="backupFirst" checked> Back up target first (enables rollback)</label>
+      <span id="deployHint" class="small muted"></span>
+    </div>
+    <div id="jobBox" hidden style="margin-top:14px"></div>
+    </div>
+  </section>
+
+  <!-- History -->
+  <section class="card step collapsed" id="stepHist">
+    <h2 class="stephead">Package History <span class="stepsum" id="sumHist"></span><span class="chev">▾</span></h2>
+    <div class="stepbody">
+    <div class="row small" style="margin-bottom:10px">
+      <button id="btnRefreshHist" class="small">Refresh</button>
+      <button id="btnArchiveFailed" class="small" title="Archive packages whose deploys all failed">Archive Failed</button>
+      <label><input type="checkbox" id="showArchived"> Show Archived (<span id="archCount">0</span>)</label>
+    </div>
+    <div id="hist" class="hist"><span class="muted small">Loading…</span></div>
+    </div>
+  </section>
+
+  <section class="card step collapsed" id="stepLog">
+    <h2 class="stephead">Activity Log <span class="stepsum"></span><span class="chev">▾</span></h2>
+    <div class="stepbody"><div id="log" class="muted"></div></div>
+  </section>
+</main>
+
+<script>
+const TOKEN = '{{TOKEN}}';
+
+const TYPE_GROUPS = {
+  'Experience Cloud': ['Network', 'NetworkBranding', 'CustomSite', 'ExperienceBundle', 'DigitalExperienceBundle', 'DigitalExperienceConfig',
+    'NavigationMenu', 'Audience', 'BrandingSet', 'ManagedContentType', 'CommunityThemeDefinition', 'CommunityTemplateDefinition', 'SiteDotCom'],
+  'Code & UI': ['ApexClass', 'ApexTrigger', 'ApexPage', 'ApexComponent', 'LightningComponentBundle', 'AuraDefinitionBundle',
+    'StaticResource', 'FlexiPage', 'Layout', 'CustomTab', 'CustomApplication', 'QuickAction', 'LightningMessageChannel'],
+  'Data Model': ['CustomObject', 'CustomField', 'RecordType', 'ListView', 'ValidationRule', 'WebLink', 'FieldSet',
+    'CompactLayout', 'BusinessProcess', 'GlobalValueSet', 'CustomMetadata', 'CustomLabel', 'PathAssistant'],
+  'Automation': ['Flow', 'WorkflowRule', 'WorkflowFieldUpdate', 'WorkflowAlert', 'CustomNotificationType'],
+  'Security & Access': ['PermissionSet', 'PermissionSetGroup', 'Profile', 'CustomPermission', 'Group', 'Queue', 'Role',
+    'SharingCriteriaRule', 'SharingOwnerRule'],
+  'Integration': ['NamedCredential', 'ExternalCredential', 'RemoteSiteSetting', 'CspTrustedSite', 'CorsWhitelistOrigin',
+    'ConnectedApp', 'ExternalDataSource'],
+  'Reports & Content': ['Report', 'Dashboard', 'ReportType', 'EmailTemplate', 'Document', 'ContentAsset'],
+};
+const DEFAULT_OFF = new Set(['SiteDotCom']);
+const TYPE_NOTES = {
+  SiteDotCom: 'Legacy binary site file. Not needed when you deploy ExperienceBundle / DigitalExperienceBundle.',
+  ExperienceBundle: 'Aura sites. Needs Setup > Digital Experiences > Settings > "Enable ExperienceBundle Metadata API" in both orgs.',
+  DigitalExperienceBundle: 'LWR sites (members look like site/Name1).',
+  NetworkBranding: 'Site branding (named cb + the site name). Deploy it with the site\'s Network.',
+  Profile: 'Only the profile settings for other components in the same package are retrieved.',
+};
+// Folder-based types: list folders first, then the items inside each folder.
+const FOLDERED = { Report: ['ReportFolder'], Dashboard: ['DashboardFolder'], EmailTemplate: ['EmailFolder', 'EmailTemplateFolder'], Document: ['DocumentFolder'] };
+const OPTIONAL_TYPES = new Set(['EmailTemplateFolder']);
+const UNFILED = { Report: 'unfiled$public', EmailTemplate: 'unfiled$public' };
+const EXP_TYPES = new Set(TYPE_GROUPS['Experience Cloud']);
+
+const S = {
+  orgs: [], info: {}, items: [], targetIndex: null, scanVersion: null, scannedSource: '', scannedTarget: '',
+  selected: new Map(), sort: { key: 'lastModifiedDate', dir: -1 },
+  pkg: null, validation: null, job: null, pollTimer: null, packages: [],
+};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const key = it => it.type + ':' + it.fullName;
+const arr = v => v == null ? [] : Array.isArray(v) ? v : [v];
+const fmtDate = iso => { if (!iso || iso.startsWith('1970')) return '—'; const d = new Date(iso); return isNaN(d) ? iso : d.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }); };
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('mm.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('mm.' + k, JSON.stringify(v)); } catch { } },
+};
+
+function log(msg, level = '') {
+  const line = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  const el = $('log');
+  el.textContent = (line + '\n' + el.textContent).slice(0, 20000);
+  if (level === 'error') console.error(msg);
+}
+
+async function api(path, body, as = 'json') {
+  const res = await fetch(path, {
+    method: body === undefined ? 'GET' : 'POST',
+    headers: { 'X-Token': TOKEN, 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const text = await res.text();
+  // A 404 from the API means the running server is older than this page.
+  if (res.status === 404) {
+    $('staleBanner').hidden = false;
+    throw new Error('This needs a newer version of the Metadata Mover server. Close its console window and start it again.');
+  }
+  if (!res.ok) {
+    let m = text; try { m = JSON.parse(text).error || text; } catch { }
+    throw new Error(m || res.statusText);
+  }
+  return as === 'text' ? text : JSON.parse(text);
+}
+
+/* In-page dialogs (instead of the browser's "localhost says" popups). Resolve to true/false, or the typed text/null. */
+let dlgQueue = Promise.resolve();
+function uiDialog(msg, { input = false, value = '', placeholder = '', ok = 'OK', cancel = 'Cancel', danger = false, noCancel = false, title = 'Metadata Mover' } = {}) {
+  const run = () => new Promise(resolve => {
+    const d = $('dlg'), inp = $('dlgInput');
+    $('dlgTitle').textContent = title;
+    $('dlgMsg').textContent = msg;
+    inp.hidden = !input; inp.value = value; inp.placeholder = placeholder;
+    $('dlgOk').textContent = ok; $('dlgOk').className = danger ? 'danger-fill' : 'primary';
+    $('dlgCancel').textContent = cancel; $('dlgCancel').hidden = noCancel;
+    const done = v => { d.onclose = null; d.close(); resolve(v); };
+    const no = input ? null : false;
+    $('dlgOk').onclick = () => done(input ? inp.value : true);
+    $('dlgCancel').onclick = () => done(no);
+    inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); done(inp.value); } };
+    d.oncancel = e => { e.preventDefault(); done(noCancel ? true : no); };
+    d.showModal();
+    (input ? inp : $('dlgOk')).focus();
+  });
+  // One dialog at a time.
+  const p = dlgQueue.then(run);
+  dlgQueue = p.catch(() => { });
+  return p;
+}
+const uiAlert = (msg, o) => uiDialog(msg, { ...o, noCancel: true });
+const uiConfirm = (msg, o) => uiDialog(msg, o);
+const uiPrompt = (msg, o) => uiDialog(msg, { ...o, input: true });
+
+window.addEventListener('unhandledrejection', e => {
+  const m = e.reason?.message || String(e.reason);
+  log('Error: ' + m, 'error');
+  uiAlert(m, { title: 'Something went wrong' });
+});
+
+// sf --json output. Errors come back as { status: 1, message, data? }.
+function parseSf(r) {
+  const raw = r.raw || '';
+  const i = raw.indexOf('{');
+  if (i < 0) throw new Error((r.err || raw || 'No output from sf').trim());
+  return JSON.parse(raw.slice(i));
+}
+
+/* ---------------- Orgs ---------------- */
+
+async function loadHealth() {
+  try {
+    const h = await api('/api/health');
+    $('sfStatus').textContent = h.sf ? (h.sfVersion.split(' ')[0] || 'sf ready') : 'sf not found';
+    $('sfStatus').className = 'badge ' + (h.sf ? 'sbx' : 'prod');
+    $('sfMissing').hidden = h.sf;
+    if (h.stale) $('staleBanner').hidden = false;
+    return h.sf;
+  } catch (e) {
+    $('sfStatus').textContent = 'server not reachable';
+    $('sfStatus').className = 'badge prod';
+    return false;
+  }
+}
+
+async function loadOrgs() {
+  try {
+    const j = parseSf(await api('/api/orgs'));
+    const r = j.result || {};
+    const seen = new Map();
+    for (const list of ['nonScratchOrgs', 'sandboxes', 'other', 'devHubs', 'scratchOrgs']) {
+      for (const o of arr(r[list])) if (o.username && !seen.has(o.username)) seen.set(o.username, o);
+    }
+    S.orgs = [...seen.values()].sort((a, b) => (a.alias || a.username).localeCompare(b.alias || b.username));
+    renderOrgSelects();
+    log(`Found ${S.orgs.length} connected org(s).`);
+  } catch (e) { log('Could not list orgs: ' + e.message, 'error'); }
+}
+
+function renderOrgSelects() {
+  const opts = '<option value="">— choose —</option>' + S.orgs.map(o =>
+    `<option value="${esc(o.username)}">${esc(o.alias ? `${o.alias} (${o.username})` : o.username)}${o.connectedStatus && o.connectedStatus !== 'Connected' ? ' — ' + esc(o.connectedStatus) : ''}</option>`).join('');
+  $('logoutOrg').innerHTML = opts.replace('— choose —', 'Org to disconnect…');
+  renderConnList();
+  for (const [sel, k] of [['srcOrg', 'source'], ['tgtOrg', 'target']]) {
+    const el = $(sel); const cur = el.value || store.get(k, '');
+    el.innerHTML = opts;
+    if (S.orgs.some(o => o.username === cur)) el.value = cur;
+  }
+  onOrgChange('source'); onOrgChange('target');
+}
+
+async function onOrgChange(which) {
+  const sel = which === 'source' ? $('srcOrg') : $('tgtOrg');
+  const meta = which === 'source' ? $('srcMeta') : $('tgtMeta');
+  const org = sel.value;
+  store.set(which, org);
+  if (!org) { meta.innerHTML = ''; updateDeployButtons(); return; }
+  if (S.info[org]) { meta.innerHTML = orgMetaHtml(S.info[org]); updateDeployButtons(); if (which === 'target') applyDefaultTestLevel(); return; }
+  meta.innerHTML = '<span class="spin"></span> connecting…';
+  try {
+    const info = await api('/api/orginfo', { org });
+    S.info[org] = info;
+    renderConnList();
+    if (sel.value === org) meta.innerHTML = orgMetaHtml(info);
+    if (which === 'target') applyDefaultTestLevel();
+  } catch (e) {
+    meta.innerHTML = `<span style="color:var(--bad)">${esc(e.message)}</span>`;
+  }
+  updateDeployButtons();
+}
+
+// Developer Edition orgs report IsSandbox = false, but they aren't a real production org.
+function orgKind(i) {
+  if (!i) return null;
+  if (i.isSandbox) return { cls: 'sbx', label: 'Sandbox', prod: false };
+  if (/developer/i.test(i.orgType || '')) return { cls: 'dev', label: 'Developer Edition', prod: false };
+  return { cls: 'prod', label: 'PRODUCTION', prod: true };
+}
+
+function orgMetaHtml(i) {
+  const k = orgKind(i);
+  return `<span class="badge ${k.cls}">${k.label}</span> ${esc(i.name)} · API ${esc(i.apiVersion)} · you: ${esc(i.userFullName || i.username)}`;
+}
+
+function renderConnList() {
+  updateSummaries();
+  $('connCount').textContent = S.orgs.length;
+  $('connList').innerHTML = S.orgs.map(o => {
+    const k = orgKind(S.info[o.username]);
+    const st = o.connectedStatus && o.connectedStatus !== 'Connected' ? `<span class="badge prod">${esc(o.connectedStatus)}</span>` : '';
+    return `<div class="c"><b>${esc(o.alias || o.username)}</b> ${k ? `<span class="badge ${k.cls}">${k.label}</span>` : ''} ${st}
+      <button class="link small" data-rename="${esc(o.username)}" title="Change this org's alias">Rename</button>
+      <div class="muted">${esc(o.alias ? o.username : '')}${o.alias ? '<br>' : ''}${esc((o.instanceUrl || '').replace(/^https:\/\//, ''))}</div></div>`;
+  }).join('') || '<span class="muted small">No orgs connected yet.</span>';
+}
+
+// Production-type orgs (including Developer Edition) need tests when Apex is deployed.
+function packageHasApex() { return (S.pkg?.components || []).some(c => c.type === 'ApexClass' || c.type === 'ApexTrigger'); }
+function applyDefaultTestLevel() {
+  const i = S.info[$('tgtOrg').value];
+  if (!i) return;
+  $('testLevel').value = !i.isSandbox && packageHasApex() ? 'RunLocalTests' : 'NoTestRun';
+  onTestLevel();
+}
+
+async function doLogin() {
+  const alias = $('loginAlias').value.trim();
+  let url = $('loginEnv').value;
+  if (url === 'custom') url = $('loginUrl').value.trim().replace(/\/+$/, '');
+  if (!/^[\w.\-]+$/.test(alias)) return await uiAlert('Give the org a short alias (letters, numbers, - . _).');
+  if (!/^https:\/\//.test(url)) return await uiAlert('Enter the full https:// URL.');
+  $('loginStatus').innerHTML = '<span class="spin"></span> Finish logging in in the browser window that just opened…';
+  $('btnLogin').disabled = true;
+  try {
+    const j = parseSf(await api('/api/login', { alias, instanceUrl: url }));
+    if (j.status !== 0) throw new Error(j.message || 'Login failed');
+    $('loginStatus').textContent = `Connected ${j.result.username}.`;
+    log(`Connected ${alias} (${j.result.username}).`);
+    $('loginForm').hidden = true;
+    await loadOrgs();
+  } catch (e) {
+    $('loginStatus').textContent = e.message;
+    log('Login failed: ' + e.message, 'error');
+  } finally { $('btnLogin').disabled = false; }
+}
+
+async function renameOrg(username) {
+  const o = S.orgs.find(x => x.username === username);
+  if (!o) return;
+  let alias = o.alias || '';
+  for (;;) {
+    alias = await uiPrompt(`New alias for ${username}:\n(letters, numbers, - . _; leave empty to remove the alias)`,
+      { title: 'Rename Org', ok: 'Rename', value: alias, placeholder: 'e.g. cfb-uat' });
+    if (alias === null) return;
+    alias = alias.trim();
+    if (alias === (o.alias || '')) return;
+    if (alias && !/^[\w.\-]{1,60}$/.test(alias)) { await uiAlert('Use only letters, numbers, - . _ (up to 60).', { title: 'Rename Org' }); continue; }
+    const other = S.orgs.find(x => x.alias === alias && x.username !== username);
+    if (other) { await uiAlert(`"${alias}" is already the alias of ${other.username}.`, { title: 'Rename Org' }); continue; }
+    break;
+  }
+  try {
+    const j = parseSf(await api('/api/alias', { org: username, alias, old: o.alias || '' }));
+    if (j.status !== 0) throw new Error(j.message || 'Rename failed');
+    log(`Renamed ${o.alias || username} to ${alias || username}.`);
+    await loadOrgs();
+  } catch (e) { await uiAlert('Rename failed: ' + e.message); }
+}
+
+async function doLogout() {
+  const org = $('logoutOrg').value;
+  if (!org) return await uiAlert('Pick the org to disconnect.');
+  if (!await uiConfirm(`Disconnect ${org}?\nThis removes the saved login from the Salesforce CLI. You can connect it again afterwards.`)) return;
+  try {
+    const j = parseSf(await api('/api/logout', { org }));
+    if (j.status !== 0) throw new Error(j.message || 'Disconnect failed');
+    delete S.info[org];
+    log(`Disconnected ${org}.`);
+    await loadOrgs();
+  } catch (e) { await uiAlert('Disconnect failed: ' + e.message); }
+}
+
+/* ---------------- Types ---------------- */
+
+function renderTypeGrid() {
+  const chosen = new Set(store.get('types', null) || Object.values(TYPE_GROUPS).flat().filter(t => !DEFAULT_OFF.has(t)));
+  $('typeGrid').innerHTML = Object.entries(TYPE_GROUPS).map(([g, types]) => `
+    <div class="typegroup"><h4>${esc(g)} <button class="link small" data-group="${esc(g)}">Toggle</button></h4>
+    ${types.map(t => `<label title="${esc(TYPE_NOTES[t] || '')}"><input type="checkbox" value="${t}" ${chosen.has(t) ? 'checked' : ''}> ${t}${TYPE_NOTES[t] ? ' <span class="muted">ⓘ</span>' : ''}</label>`).join('')}
+    </div>`).join('');
+  $('extraTypes').value = store.get('extraTypes', '');
+  updateTypeCount();
+}
+function selectedTypes() {
+  const t = [...$('typeGrid').querySelectorAll('input:checked')].map(i => i.value);
+  const extra = $('extraTypes').value.split(',').map(s => s.trim()).filter(s => /^[A-Za-z]+$/.test(s));
+  return [...new Set([...t, ...extra])];
+}
+function updateTypeCount() {
+  $('typeCount').textContent = selectedTypes().length;
+  store.set('types', [...$('typeGrid').querySelectorAll('input:checked')].map(i => i.value));
+  store.set('extraTypes', $('extraTypes').value);
+  updateSummaries();
+}
+
+/* ---------------- Templates ---------------- */
+
+async function loadTemplates(json) {
+  try {
+    const r = await api('/api/templates', json === undefined ? undefined : { json });
+    S.templates = arr(JSON.parse(r.raw || '[]'));
+  } catch (e) { log('Templates: ' + e.message, 'error'); S.templates = S.templates || []; }
+  renderTemplates();
+}
+function renderTemplates() {
+  const cur = $('tplSelect').value;
+  $('tplSelect').innerHTML = '<option value="">— none —</option>' + S.templates.map((t, i) => `<option value="${i}">${esc(t.name)}</option>`).join('');
+  if (cur && S.templates[cur]) $('tplSelect').value = cur;
+  onTplSelect();
+}
+function onTplSelect() {
+  const t = S.templates[$('tplSelect').value];
+  $('btnTplApply').disabled = $('btnTplUpdate').disabled = $('btnTplDelete').disabled = !t;
+  $('tplInfo').textContent = t ? `${t.types.length + (t.extraTypes ? t.extraTypes.split(',').length : 0)} types` +
+    (t.sinceDays != null ? ` · last ${t.sinceDays} days` : '') + (t.components?.length ? ` · ${t.components.length} components` : '') : '';
+}
+function captureTemplate(name, includeComponents) {
+  const sinceVal = $('since').value;
+  return {
+    name,
+    types: [...$('typeGrid').querySelectorAll('input:checked')].map(i => i.value),
+    extraTypes: $('extraTypes').value.trim(),
+    sinceDays: sinceVal ? Math.max(0, Math.round((Date.now() - new Date(sinceVal)) / 864e5)) : null,
+    filters: {
+      by: $('byFilter').value && $('byFilter').value === S.info[S.scannedSource]?.userFullName ? '@me' : $('byFilter').value, status: $('statusFilter').value, search: $('search').value,
+      onlyChanged: $('onlyChanged').checked, hideManaged: $('hideManaged').checked,
+    },
+    components: includeComponents ? [...S.selected.values()] : [],
+    saved: new Date().toISOString(),
+  };
+}
+async function saveTemplate(update) {
+  const idx = $('tplSelect').value;
+  const existing = update ? S.templates[idx] : null;
+  const name = existing ? existing.name : (await uiPrompt('Template name:', { ok: 'Save Template' }) || '').trim();
+  if (!name) return;
+  if (!existing && S.templates.some(t => t.name === name)) return await uiAlert('A template with that name exists. Select it and click Update instead.');
+  const n = S.selected.size;
+  const withComps = n > 0 && await uiConfirm(`Also save the ${n} component(s) currently in the package?`, { ok: 'Types, Filters & Components', cancel: 'Types & Filters Only' });
+  const t = captureTemplate(name, withComps);
+  const list = [...S.templates];
+  if (existing) list[idx] = t; else list.push(t);
+  list.sort((a, b) => a.name.localeCompare(b.name));
+  await loadTemplates(JSON.stringify(list, null, 2));
+  $('tplSelect').value = String(S.templates.findIndex(x => x.name === name)); onTplSelect();
+  log(`Template "${name}" ${existing ? 'updated' : 'saved'}.`);
+}
+async function deleteTemplate() {
+  const t = S.templates[$('tplSelect').value];
+  if (!t || !await uiConfirm(`Delete template "${t.name}"?`, { ok: 'Delete', danger: true })) return;
+  await loadTemplates(JSON.stringify(S.templates.filter(x => x !== t), null, 2));
+  log(`Template "${t.name}" deleted.`);
+}
+function applyTemplate() {
+  const t = S.templates[$('tplSelect').value];
+  if (!t) return;
+  const on = new Set(t.types);
+  $('typeGrid').querySelectorAll('input').forEach(i => i.checked = on.has(i.value));
+  $('extraTypes').value = t.extraTypes || '';
+  updateTypeCount();
+  if (t.sinceDays != null) {
+    const d = new Date(Date.now() - t.sinceDays * 864e5); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    $('since').value = d.toISOString().slice(0, 16); store.set('since', $('since').value);
+  }
+  const f = t.filters || {};
+  S.pendingBy = f.by || '';
+  $('statusFilter').value = f.status || ''; $('search').value = f.search || '';
+  $('onlyChanged').checked = f.onlyChanged !== false; $('hideManaged').checked = f.hideManaged !== false;
+  for (const c of arr(t.components)) addSel(c);
+  if (S.items.length) fillByFilter();
+  selectionChanged();
+  log(`Applied template "${t.name}"${t.components?.length ? ` (+${t.components.length} components)` : ''}. ${S.items.length ? 'Rescan if you changed the types.' : 'Click Scan orgs.'}`);
+}
+
+/* ---------------- Scan ---------------- */
+
+function parseListXml(text) {
+  const doc = new DOMParser().parseFromString(text, 'text/xml');
+  const fault = doc.getElementsByTagNameNS('*', 'faultstring')[0] || doc.getElementsByTagName('faultstring')[0];
+  if (fault) return { error: fault.textContent };
+  if (doc.getElementsByTagName('parsererror').length) return { error: 'Unexpected response: ' + text.slice(0, 200) };
+  const items = [];
+  for (const r of doc.getElementsByTagNameNS('*', 'result')) {
+    const g = n => { const e = r.getElementsByTagNameNS('*', n)[0]; return e ? e.textContent : ''; };
+    items.push({
+      type: g('type'), fullName: g('fullName'), lastModifiedDate: g('lastModifiedDate'),
+      lastModifiedByName: g('lastModifiedByName'), manageableState: g('manageableState'), namespacePrefix: g('namespacePrefix'),
+    });
+  }
+  return { items };
+}
+
+// Runs listMetadata queries 3 at a time (the API max). A failing batch is retried one query at a time.
+async function runQueries(org, ver, queries, progress, warnings) {
+  const out = [];
+  const one = async batch => {
+    const res = parseListXml(await api('/api/listmetadata', { org, apiVersion: ver, queries: batch.map(q => ({ type: q.type, folder: q.folder })) }, 'text'));
+    if (res.error && batch.length > 1) { for (const q of batch) await one([q]); return; }
+    if (res.error) {
+      const q = batch[0];
+      if (!OPTIONAL_TYPES.has(q.type)) warnings.push(`${q.type}${q.folder ? ' in ' + q.folder : ''}: ${res.error}`);
+      return;
+    }
+    for (const it of res.items) {
+      const q = batch.length === 1 ? batch[0] : batch.find(b => b.type === it.type) || {};
+      it.type = q.pkgType || q.type || it.type;
+      if (q.isFolder) it.isFolder = true;
+      out.push(it);
+    }
+  };
+  for (let i = 0; i < queries.length; i += 3) {
+    await one(queries.slice(i, i + 3));
+    progress(Math.min(i + 3, queries.length), queries.length);
+  }
+  return out;
+}
+
+async function listOrg(org, ver, types, label, warnings) {
+  const status = (phase, d, t) => $('scanStatus').innerHTML = `<span class="spin"></span> ${esc(label)}: ${phase} ${d}/${t}`;
+  const plain = types.filter(t => !FOLDERED[t]).map(t => ({ type: t }));
+  const folderQs = types.filter(t => FOLDERED[t]).flatMap(t => FOLDERED[t].map(ft => ({ type: ft, pkgType: t, isFolder: true })));
+  const items = await runQueries(org, ver, plain, (d, t) => status('types', d, t), warnings);
+  const folders = await runQueries(org, ver, folderQs, (d, t) => status('folders', d, t), warnings);
+  const seenFolders = new Set();
+  const inFolder = [];
+  for (const f of folders) {
+    if (seenFolders.has(key(f))) continue;
+    seenFolders.add(key(f));
+    items.push(f);
+    inFolder.push({ type: f.type, folder: f.fullName });
+  }
+  for (const t of types) if (UNFILED[t]) inFolder.push({ type: t, folder: UNFILED[t] });
+  items.push(...await runQueries(org, ver, inFolder, (d, t) => status('folder contents', d, t), warnings));
+  const dedup = new Map(); for (const it of items) dedup.set(key(it), it);
+  return [...dedup.values()];
+}
+
+async function scan() {
+  const src = $('srcOrg').value, tgt = $('tgtOrg').value;
+  if (!src) return await uiAlert('Pick a source org first.');
+  const types = selectedTypes();
+  if (!types.length) return await uiAlert('Pick at least one metadata type.');
+  $('btnScan').disabled = true; $('scanWarnings').hidden = true;
+  const warnings = [];
+  try {
+    if (!S.info[src]) await onOrgChange('source');
+    if (tgt && !S.info[tgt]) await onOrgChange('target');
+    const versions = [S.info[src], tgt && S.info[tgt]].filter(Boolean).map(i => parseFloat(i.apiVersion));
+    const ver = Math.min(...versions).toFixed(1);
+    S.scanVersion = ver;
+    const t0 = Date.now();
+    S.items = await listOrg(src, ver, types, 'Source', warnings);
+    S.scannedSource = src;
+    S.targetIndex = null; S.scannedTarget = '';
+    if (tgt && tgt !== src) {
+      const tw = [];
+      const titems = await listOrg(tgt, ver, types, 'Target', tw);
+      S.targetIndex = new Map(titems.map(i => [key(i), i]));
+      S.scannedTarget = tgt;
+      warnings.push(...tw.map(w => 'Target – ' + w));
+    }
+    $('scanStatus').textContent = `${S.items.length} components in source · API ${ver} · ${Math.round((Date.now() - t0) / 1000)}s`;
+    log(`Scanned ${S.items.length} source components across ${types.length} types.`);
+    if (warnings.length) {
+      const hint = warnings.some(w => /ExperienceBundle/.test(w)) ? '<br>Tip: ExperienceBundle needs "Enable ExperienceBundle Metadata API" under Setup › Digital Experiences › Settings.' : '';
+      $('scanWarnings').innerHTML = `<strong>Some types couldn't be listed</strong> (usually the feature isn't enabled in that org):<br>${warnings.map(esc).join('<br>')}${hint}`;
+      $('scanWarnings').hidden = false;
+    }
+    fillByFilter();
+    $('scanResults').hidden = false;
+    updateSummaries();
+    renderRows(); renderSites();
+  } catch (e) {
+    $('scanStatus').textContent = 'Scan failed: ' + e.message;
+    log('Scan failed: ' + e.message, 'error');
+  } finally { $('btnScan').disabled = false; }
+}
+
+function fillByFilter() {
+  const names = [...new Set(S.items.map(i => i.lastModifiedByName).filter(Boolean))].sort();
+  const me = S.info[S.scannedSource]?.userFullName;
+  // A template stores '@me' for "the connected user", so it works in any org.
+  const pending = S.pendingBy; delete S.pendingBy;
+  const want = pending === '@me' ? me : pending !== undefined ? pending : $('byFilter').value;
+  $('byFilter').innerHTML = '<option value="">Anyone</option>' + names.map(n => `<option>${esc(n)}</option>`).join('');
+  $('byFilter').value = names.includes(want) ? want : pending !== undefined ? '' : (names.includes(me) ? me : '');
+}
+
+function statusOf(it) {
+  if (!S.targetIndex) return null;
+  const t = S.targetIndex.get(key(it));
+  if (!t) return { cls: 'new', label: 'New', title: 'Not found in target' };
+  const tip = `Target last modified ${fmtDate(t.lastModifiedDate)} by ${t.lastModifiedByName || '?'}`;
+  if (t.lastModifiedDate > it.lastModifiedDate) return { cls: 'warn', label: 'Target newer ⚠', title: tip + ' — deploying will overwrite that change' };
+  return { cls: 'upd', label: 'Update', title: tip };
+}
+
+function visibleItems() {
+  const sinceVal = $('since').value;
+  const since = sinceVal ? new Date(sinceVal).toISOString() : '';
+  const by = $('byFilter').value, q = $('search').value.trim().toLowerCase();
+  const only = $('onlyChanged').checked, hide = $('hideManaged').checked, st = $('statusFilter').value;
+  const list = S.items.filter(it =>
+    (!hide || !/^installed/.test(it.manageableState)) &&
+    (!only || !since || it.lastModifiedDate >= since) &&
+    (!by || it.lastModifiedByName === by) &&
+    (!q || (it.type + ' ' + it.fullName).toLowerCase().includes(q)) &&
+    (!st || statusOf(it)?.cls === st));
+  const { key: k, dir } = S.sort;
+  const val = it => k === 'status' ? (statusOf(it)?.label || '') : (it[k] || '');
+  return list.sort((a, b) => val(a) < val(b) ? -dir : val(a) > val(b) ? dir : 0);
+}
+
+const MAX_ROWS = 1500;
+function renderRows() {
+  $('since').disabled = !$('onlyChanged').checked;
+  const list = visibleItems();
+  S.visible = list;
+  $('rows').innerHTML = list.slice(0, MAX_ROWS).map(it => {
+    const st = statusOf(it); const k = key(it);
+    return `<tr data-key="${esc(k)}">
+      <td><input type="checkbox" ${S.selected.has(k) ? 'checked' : ''}></td>
+      <td>${esc(it.type)}${it.isFolder ? ' <span class="muted small">(folder)</span>' : ''}</td>
+      <td class="name">${esc(it.fullName)}</td>
+      <td class="date">${esc(fmtDate(it.lastModifiedDate))}</td>
+      <td>${esc(it.lastModifiedByName)}</td>
+      <td>${st ? `<span class="badge ${st.cls}" title="${esc(st.title)}">${esc(st.label)}</span>` : '<span class="muted small">—</span>'}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" class="muted">Nothing matches these filters.</td></tr>';
+  $('rowInfo').textContent = `${list.length} shown${list.length > MAX_ROWS ? ` (first ${MAX_ROWS} rendered — narrow the filters)` : ''} of ${S.items.length}` +
+    (S.targetIndex ? '' : ' · pick a target org and rescan to see what already exists there');
+  $('checkAll').checked = list.length > 0 && list.every(it => S.selected.has(key(it)));
+  document.querySelectorAll('th[data-sort]').forEach(th => {
+    th.textContent = th.textContent.replace(/ [▲▼]$/, '') + (th.dataset.sort === S.sort.key ? (S.sort.dir > 0 ? ' ▲' : ' ▼') : '');
+  });
+}
+
+// Groups Experience components that belong to the same site by a normalized name.
+// Names can carry encoded punctuation: %28 in Network names, UU0028 in navigation menus.
+const normSite = s => {
+  try { s = decodeURIComponent(s); } catch {}
+  return s.replace(/^site\//, '').replace(/UU00[0-9A-F]{2}/g, '').toLowerCase().replace(/[^a-z0-9]/g, '').replace(/\d+$/, '');
+};
+// LWR sites also have a generated CDN static resource (…_sf_default_cdn_<site>).
+const isSiteResource = i => i.type === 'StaticResource' && /_sf_default_cdn_/i.test(i.fullName);
+function siteGroups() {
+  const exp = S.items.filter(i => EXP_TYPES.has(i.type) || isSiteResource(i));
+  return exp.filter(i => i.type === 'Network').map(n => {
+    const base = normSite(n.fullName);
+    const members = exp.filter(i => { const k = normSite(i.fullName); return k === base || (base.length > 3 && k.includes(base)); });
+    let name = n.fullName;
+    try { name = decodeURIComponent(name); } catch {}
+    return { name, members };
+  });
+}
+function renderSites() {
+  const groups = siteGroups();
+  $('siteBox').hidden = !groups.length;
+  $('siteChips').innerHTML = groups.map((g, i) => `<button class="small" data-site="${i}" title="${esc(g.members.map(key).join('\n'))}">+ ${esc(g.name)} (${g.members.length})</button>`).join('');
+  S.siteGroups = groups;
+}
+
+/* ---------------- Selection / package ---------------- */
+
+function addSel(it) { S.selected.set(key(it), { type: it.type, fullName: it.fullName }); }
+function selectionChanged() { renderSelection(); renderRows(); store.set('selected', [...S.selected.values()]); }
+
+function renderSelection() {
+  const n = S.selected.size;
+  $('selCount').textContent = `${n} component${n === 1 ? '' : 's'}`;
+  updateSummaries();
+  $('selEmpty').hidden = n > 0; $('selBox').hidden = n === 0;
+  const byType = {};
+  for (const [k, m] of S.selected) (byType[m.type] ||= []).push([k, m]);
+  $('selBox').innerHTML = Object.keys(byType).sort().map(t => `
+    <div class="selgroup"><div>${esc(t)} (${byType[t].length})</div><div class="chips">
+    ${byType[t].sort((a, b) => a[1].fullName.localeCompare(b[1].fullName)).map(([k, m]) => `<span class="chip">${esc(m.fullName)}<button data-remove="${esc(k)}" title="Remove">×</button></span>`).join('')}
+    </div></div>`).join('');
+  $('xmlPreview').textContent = n ? buildPackageXml([...S.selected.values()], packageVersion()) : '';
+}
+
+function packageVersion() {
+  if (S.scanVersion) return S.scanVersion;
+  const v = [S.info[$('srcOrg').value], S.info[$('tgtOrg').value]].filter(Boolean).map(i => parseFloat(i.apiVersion));
+  return v.length ? Math.min(...v).toFixed(1) : '60.0';
+}
+
+function xmlEsc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function buildPackageXml(members, ver) {
+  const byType = {};
+  for (const m of members) (byType[m.type] ||= new Set()).add(m.fullName);
+  const body = Object.keys(byType).sort().map(t =>
+    '    <types>\n' + [...byType[t]].sort().map(n => `        <members>${xmlEsc(n)}</members>\n`).join('') + `        <name>${t}</name>\n    </types>\n`).join('');
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<Package xmlns="http://soap.sforce.com/2006/04/metadata">\n${body}    <version>${ver}</version>\n</Package>\n`;
+}
+function parsePackageXml(text) {
+  const doc = new DOMParser().parseFromString(text, 'text/xml');
+  const out = [];
+  for (const t of doc.getElementsByTagNameNS('*', 'types')) {
+    const name = t.getElementsByTagNameNS('*', 'name')[0]?.textContent;
+    for (const m of t.getElementsByTagNameNS('*', 'members')) out.push({ type: name, fullName: m.textContent });
+  }
+  return out;
+}
+
+async function manualAdd() {
+  const bad = [];
+  for (const line of $('manualAdd').value.split('\n').map(s => s.trim()).filter(Boolean)) {
+    const m = line.match(/^([A-Za-z]+)\s*:\s*(.+)$/);
+    if (m) addSel({ type: m[1], fullName: m[2].trim() }); else bad.push(line);
+  }
+  $('manualAdd').value = bad.join('\n');
+  if (bad.length) await uiAlert('Use the format "Type: Name" for:\n' + bad.join('\n'));
+  selectionChanged();
+}
+
+function defaultPkgName() {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+}
+
+async function buildPackage() {
+  const src = $('srcOrg').value;
+  if (!src) return await uiAlert('Pick a source org.');
+  if (!S.selected.size) return await uiAlert('Add some components first.');
+  // A name is required; ask for one (and re-ask if it's invalid) rather than inventing it.
+  let name = $('pkgName').value.trim().replace(/\s+/g, '-');
+  while (!/^[\w\-]{1,80}$/.test(name)) {
+    const typed = await uiPrompt(name ? 'Package names can only use letters, numbers, - and _. Enter a different name:' : 'Name this package so you can find it later in Package History:',
+      { ok: 'Use This Name', placeholder: 'e.g. Portal-Phase2', value: name, title: 'Package Name' });
+    if (typed === null) return;
+    name = typed.trim().replace(/\s+/g, '-');
+  }
+  $('pkgName').value = name; updateSummaries();
+  if (S.packages.some(p => p.name === name) && !await uiConfirm(`A package named "${name}" exists. Replace it?`)) return;
+  const xml = buildPackageXml([...S.selected.values()], packageVersion());
+  $('btnBuild').disabled = true;
+  $('buildStatus').innerHTML = '<span class="spin"></span> Retrieving from source…';
+  $('buildResult').innerHTML = '';
+  try {
+    const r = await api('/api/retrieve', {
+      org: src, name, packageXml: xml, apiVersion: packageVersion(), count: S.selected.size,
+      note: $('pkgNote').value, sourceLabel: S.info[src]?.name || src,
+    });
+    let j = null; try { j = parseSf(r); } catch { }
+    const res = j?.result || {};
+    const files = arr(res.fileProperties).filter(f => !/package\.xml$/.test(f.fileName));
+    const msgs = arr(res.messages).concat(arr(res.details?.messages || []));
+    if (!r.ok) throw new Error(j?.message || r.err || 'Retrieve failed');
+    $('buildStatus').textContent = '';
+    $('buildResult').innerHTML = `<div class="notice ok">Package <strong>${esc(name)}</strong> built: ${files.length} file(s) retrieved.
+      <button class="link" data-open="${esc(name)}">Open Folder</button></div>` +
+      (msgs.length ? `<div class="notice warn" style="margin-top:8px"><strong>Retrieve Warnings</strong> — these components were not included:<br>${msgs.map(m => esc(`${m.fileName || ''}: ${m.problem || JSON.stringify(m)}`)).join('<br>')}</div>
+        <div class="row" style="margin-top:8px"><button class="primary" data-goto="4">Continue to Validate &amp; Deploy →</button></div>` : '');
+    log(`Built package ${name} (${files.length} files, ${msgs.length} warnings).`);
+    S.pkg = { name, components: [...S.selected.values()], sourceOrg: src, sourceLabel: S.info[src]?.name || src, apiVersion: packageVersion() };
+    S.validation = null;
+    renderCurrentPkg();
+    await loadHistory();
+    // With warnings, stay on step 3 so they can be read first.
+    if (msgs.length) $('buildResult').querySelector('[data-goto]').onclick = () => goStep(4);
+    else goStep(4);
+  } catch (e) {
+    $('buildStatus').textContent = '';
+    $('buildResult').innerHTML = `<div class="notice bad">${esc(e.message)}</div>`;
+    log('Build failed: ' + e.message, 'error');
+  } finally { $('btnBuild').disabled = false; }
+}
+
+async function downloadXml() {
+  if (!S.selected.size) return await uiAlert('Nothing selected.');
+  const blob = new Blob([buildPackageXml([...S.selected.values()], packageVersion())], { type: 'text/xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'package.xml'; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* ---------------- Deploy ---------------- */
+
+function renderCurrentPkg() {
+  const p = S.pkg;
+  $('pkgCurrent').innerHTML = p
+    ? `Package <strong>${esc(p.name)}</strong> · ${p.components.length} components · from ${esc(p.sourceLabel || p.sourceOrg || '?')}
+       <button class="link" data-open="${esc(p.name)}">Open Folder</button>`
+    : 'No package yet. Build one in step 3, or pick one from Package history.';
+  applyDefaultTestLevel();
+  updateDeployButtons();
+}
+
+function onTestLevel() {
+  const spec = $('testLevel').value === 'RunSpecifiedTests';
+  $('testsWrap').hidden = !spec; $('btnFindTests').hidden = !spec;
+  updateDeployButtons();
+}
+
+function updateDeployButtons() {
+  const tgt = $('tgtOrg').value; const running = !!S.job && !S.job.finished;
+  const ready = !!S.pkg && !!tgt && !running;
+  $('btnValidate').disabled = !ready; $('btnDeploy').disabled = !ready;
+  const v = S.validation;
+  const quickOk = ready && v && v.pkg === S.pkg?.name && v.target === tgt;
+  $('btnQuick').disabled = !quickOk;
+  $('btnCancel').hidden = !running;
+  const info = S.info[tgt], kind = orgKind(info);
+  $('deployHint').textContent = !S.pkg ? '' : !tgt ? 'Pick a target org in step 1.'
+    : quickOk ? 'Validation passed — quick deploy is available for 10 days.'
+    : $('testLevel').value === 'NoTestRun' ? 'Validate runs a check-only deploy. Quick deploy needs a validation that ran tests.' : '';
+  if (S.pkg && kind?.prod) $('deployHint').textContent += ' Target is PRODUCTION.';
+  else if (S.pkg && info && !info.isSandbox && packageHasApex() && $('testLevel').value === 'NoTestRun') $('deployHint').textContent += ' Developer Edition orgs need tests when the package has Apex.';
+}
+
+async function startJob(mode) {
+  const tgt = $('tgtOrg').value; const info = S.info[tgt]; const p = S.pkg;
+  const level = $('testLevel').value;
+  const tests = $('tests').value.split(',').map(s => s.trim()).filter(Boolean);
+  if (level === 'RunSpecifiedTests' && !tests.length) return await uiAlert('List the test classes to run.');
+  if (tgt === p.sourceOrg && !await uiConfirm('Target is the same org the package came from. Continue?')) return;
+  if (mode !== 'validate') {
+    const label = info ? `${info.name} (${orgKind(info).label})` : tgt;
+    if (orgKind(info)?.prod) {
+      if (await uiPrompt(`Deploy ${p.name} to PRODUCTION org ${info.name}?\nType DEPLOY to continue.`, { ok: 'Deploy', danger: true, placeholder: 'DEPLOY' }) !== 'DEPLOY') return;
+    } else if (!await uiConfirm(`Deploy ${p.name} (${p.components.length} components) to ${label}?`, { ok: 'Deploy' })) return;
+  }
+  stopPolling();
+  const job = { mode, target: tgt, pkg: p.name, level, started: Date.now(), finished: false, quickEligible: mode === 'validate' && level !== 'NoTestRun' };
+  S.job = job;
+  updateDeployButtons();
+  $('jobBox').hidden = false;
+  if (mode !== 'validate' && $('backupFirst').checked) {
+    $('jobBox').innerHTML = `<div class="notice info"><span class="spin"></span> Backing up the target's current versions so this deploy can be rolled back…</div>`;
+    try {
+      const b = await takeBackup(p, tgt);
+      job.backupId = b.id;
+      log(`Rollback point saved: ${b.restored} existing component(s) backed up, ${b.added.length} new.`);
+    } catch (e) {
+      log('Backup failed: ' + e.message, 'error');
+      if (!await uiConfirm(`Couldn't back up the target first:\n${e.message}\n\nDeploy anyway, without a rollback point?`)) {
+        job.finished = true; $('jobBox').innerHTML = `<div class="notice warn">Deploy not started. Backup failed: ${esc(e.message)}</div>`;
+        updateDeployButtons(); return;
+      }
+    }
+  }
+  await launchJob(job, { mode, target: tgt, pkg: p.name, testLevel: level, tests, backupId: job.backupId, jobId: mode === 'quick' ? S.validation?.id : undefined });
+}
+
+const JOB_TITLES = { validate: 'Validation', deploy: 'Deployment', quick: 'Quick deploy', rollback: 'Rollback' };
+
+async function launchJob(job, body) {
+  $('jobBox').hidden = false;
+  $('jobBox').innerHTML = `<div class="notice info"><span class="spin"></span> Starting ${JOB_TITLES[job.mode].toLowerCase()}…</div>`;
+  try {
+    const resp = await api('/api/deploy', body);
+    (resp.fixes || []).forEach(f => log(f, 'warn'));
+    const j = parseSf(resp);
+    const id = j.result?.id;
+    if (!id) throw new Error(j.message || 'The deployment did not start.');
+    job.id = id;
+    log(`${job.mode} started on ${job.target}: ${id}`);
+    poll();
+  } catch (e) {
+    job.finished = true;
+    $('jobBox').innerHTML = `<div class="notice bad">${esc(e.message)}${job.mode === 'quick' ? '<br>Quick deploy isn\'t available for this validation — use Deploy instead.' : ''}</div>`;
+    log(`${job.mode} failed to start: ${e.message}`, 'error');
+    updateDeployButtons();
+  }
+}
+
+/* ---------------- Rollback ---------------- */
+
+const CHILD_TYPES = new Set(['CustomField', 'RecordType', 'ListView', 'ValidationRule', 'WebLink', 'FieldSet', 'CompactLayout', 'BusinessProcess', 'SharingCriteriaRule', 'SharingOwnerRule']);
+
+// Retrieves the package's components from the target before a deploy. Anything the target doesn't have yet is
+// "added" by the deploy, so rolling back deletes it; everything else is restored to the backed-up version.
+async function takeBackup(p, tgt) {
+  const r = await api('/api/backup', { pkg: p.name, target: tgt });
+  let j = null; try { j = parseSf(r); } catch { }
+  if (!j || !j.result) throw new Error(j?.message || r.err || 'Retrieve from the target failed.');
+  const missing = new Set(), warnings = [];
+  for (const m of arr(j.result.messages)) {
+    const mm = /Entity of type '([^']+)' named '([^']+)' cannot be found/i.exec(m.problem || '');
+    if (mm) missing.add(mm[1] + ':' + mm[2]); else warnings.push(`${m.fileName || ''}: ${m.problem || ''}`);
+  }
+  const restore = p.components.filter(c => !missing.has(key(c)));
+  let added = p.components.filter(c => missing.has(key(c)));
+  // Deleting a new object deletes its fields, rules, etc. too; listing them separately makes the delete fail.
+  const newObjects = new Set(added.filter(c => c.type === 'CustomObject').map(c => c.fullName));
+  added = added.filter(c => !(CHILD_TYPES.has(c.type) && newObjects.has(c.fullName.split('.')[0])));
+  const ver = p.apiVersion || packageVersion();
+  const info = S.info[tgt];
+  const meta = {
+    id: r.id, target: tgt, targetLabel: info?.name || tgt, created: new Date().toISOString(),
+    restored: restore.length, restoreComponents: restore, added, warnings, apiVersion: ver,
+  };
+  await api('/api/rollback/prepare', {
+    pkg: p.name, id: r.id, meta: JSON.stringify(meta),
+    packageXml: buildPackageXml(restore, ver), destructiveXml: added.length ? buildPackageXml(added, ver) : '',
+  });
+  return { id: r.id, restored: restore.length, added };
+}
+
+async function rollbackTo(pkgName, b) {
+  if (S.job && !S.job.finished) return await uiAlert('Wait for the current deployment to finish.');
+  let info = S.info[b.target];
+  if (!info) { try { info = S.info[b.target] = await api('/api/orginfo', { org: b.target }); } catch { } }
+  const kind = orgKind(info);
+  const all = [...arr(b.restoreComponents), ...arr(b.added)];
+  const level = info && !info.isSandbox && all.some(c => c.type === 'ApexClass' || c.type === 'ApexTrigger') ? 'RunLocalTests' : 'NoTestRun';
+  const msg = `Roll back ${pkgName} in ${b.targetLabel || b.target}${kind ? ` (${kind.label})` : ''}?\n\n` +
+    `• Restore ${b.restored} component(s) to how they were on ${fmtDate(b.created)}\n` +
+    (b.added.length ? `• DELETE ${b.added.length} component(s) the deploy added:\n   ${b.added.slice(0, 12).map(key).join('\n   ')}${b.added.length > 12 ? '\n   …' : ''}\n` +
+      `  Deleting fields or objects also deletes their data.\n` : '') +
+    `• Tests: ${level === 'NoTestRun' ? 'none' : 'run local tests'}\n\nAny changes made in the target since then to these components will be lost.`;
+  if (kind?.prod) { if (await uiPrompt(msg + '\n\nType ROLLBACK to continue.', { ok: 'Roll Back', danger: true, placeholder: 'ROLLBACK' }) !== 'ROLLBACK') return; }
+  else if (!await uiConfirm(msg, { ok: 'Roll Back', danger: true })) return;
+  stopPolling();
+  const job = { mode: 'rollback', target: b.target, pkg: pkgName, level, started: Date.now(), finished: false, rolledBack: b.id };
+  S.job = job;
+  updateDeployButtons();
+  setCollapsed('step4', false);
+  $('jobBox').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  await launchJob(job, { mode: 'rollback', target: b.target, pkg: pkgName, testLevel: level, tests: [], backupId: b.id });
+}
+
+function stopPolling() { clearTimeout(S.pollTimer); S.pollTimer = null; }
+
+async function poll() {
+  const job = S.job;
+  if (!job || job.finished) return;
+  try {
+    const j = parseSf(await api('/api/report', { target: job.target, jobId: job.id }));
+    const d = j.result || j.data;
+    if (!d || !d.status) throw new Error(j.message || 'No status yet');
+    job.errors = 0;
+    renderJob(job, d);
+    const done = d.done === true || d.done === 'true' || ['Succeeded', 'SucceededPartial', 'Failed', 'Canceled'].includes(d.status);
+    if (done) return finishJob(job, d);
+  } catch (e) {
+    job.errors = (job.errors || 0) + 1;
+    if (job.errors > 5) {
+      job.finished = true; updateDeployButtons();
+      $('jobBox').insertAdjacentHTML('beforeend', `<div class="notice bad" style="margin-top:8px">Lost track of the job: ${esc(e.message)}. Check Deployment Status in Setup.</div>`);
+      return;
+    }
+  }
+  S.pollTimer = setTimeout(poll, 4000);
+}
+
+function pct(a, b) { return b ? Math.round(100 * a / b) : 0; }
+
+function renderJob(job, d) {
+  const n = v => Number(v || 0);
+  const info = S.info[job.target];
+  const ok = d.status === 'Succeeded', bad = ['Failed', 'Canceled'].includes(d.status);
+  const title = JOB_TITLES[job.mode];
+  const elapsed = Math.round((Date.now() - job.started) / 1000);
+  const failures = arr(d.details?.componentFailures);
+  const rtr = d.details?.runTestResult || {};
+  const testFails = arr(rtr.failures), cov = arr(rtr.codeCoverageWarnings);
+  const setupLink = info ? `${info.instanceUrl}/lightning/setup/DeployStatus/page?address=${encodeURIComponent('/changemgmt/monitorDeploymentsDetails.apexp?asyncId=' + job.id)}` : '';
+  $('jobBox').innerHTML = `
+    <div class="notice ${ok ? 'ok' : bad ? 'bad' : 'info'}">
+      ${ok || bad ? '' : '<span class="spin"></span> '}<strong>${title}: ${esc(d.status)}</strong>${d.stateDetail ? ' · ' + esc(d.stateDetail) : ''}
+      · ${elapsed}s · <span class="small">${esc(job.id)}</span>
+      ${setupLink ? ` · <a href="${esc(setupLink)}" target="_blank" rel="noopener">View in Setup</a>` : ''}
+      ${d.errorMessage ? `<div style="margin-top:6px">${esc(d.errorMessage)}</div>` : ''}
+    </div>
+    <div class="progress"><span>Components</span><div class="bar ${n(d.numberComponentErrors) ? 'bad' : ''}"><div style="width:${pct(n(d.numberComponentsDeployed) + n(d.numberComponentErrors), n(d.numberComponentsTotal))}%"></div></div>
+      <span>${n(d.numberComponentsDeployed)}/${n(d.numberComponentsTotal)}${n(d.numberComponentErrors) ? ` · ${n(d.numberComponentErrors)} err` : ''}</span></div>
+    ${n(d.numberTestsTotal) ? `<div class="progress"><span>Tests</span><div class="bar ${n(d.numberTestErrors) ? 'bad' : ''}"><div style="width:${pct(n(d.numberTestsCompleted) + n(d.numberTestErrors), n(d.numberTestsTotal))}%"></div></div>
+      <span>${n(d.numberTestsCompleted)}/${n(d.numberTestsTotal)}${n(d.numberTestErrors) ? ` · ${n(d.numberTestErrors)} fail` : ''}</span></div>` : ''}
+    ${failures.length ? `<h4 style="margin:14px 0 4px">Component Errors</h4><div class="tablewrap" style="max-height:300px"><table>
+      <thead><tr><th>Type</th><th>Name</th><th>Problem</th><th>Line</th></tr></thead><tbody>
+      ${failures.map(f => `<tr><td>${esc(f.componentType)}</td><td class="name">${esc(f.fullName)}</td><td>${esc(f.problem)}</td><td>${esc(f.lineNumber || '')}</td></tr>`).join('')}
+      </tbody></table></div>` : ''}
+    ${testFails.length ? `<h4 style="margin:14px 0 4px">Test Failures</h4><div class="tablewrap" style="max-height:300px"><table>
+      <thead><tr><th>Test</th><th>Message</th></tr></thead><tbody>
+      ${testFails.map(f => `<tr><td class="name">${esc(f.name)}.${esc(f.methodName)}</td><td>${esc(f.message)}<div class="muted small">${esc(f.stackTrace || '')}</div></td></tr>`).join('')}
+      </tbody></table></div>` : ''}
+    ${cov.length ? `<h4 style="margin:14px 0 4px">Code Coverage Warnings</h4><div class="small">${cov.map(c => esc(`${c.name || ''}: ${c.message}`)).join('<br>')}</div>` : ''}`;
+}
+
+function finishJob(job, d) {
+  job.finished = true;
+  const ok = d.status === 'Succeeded';
+  if (job.mode === 'validate' && ok && job.quickEligible) S.validation = { id: job.id, pkg: job.pkg, target: job.target };
+  if (job.mode !== 'validate' && ok) S.validation = null;
+  log(`${job.mode} ${d.status} on ${job.target} (${job.id}).`);
+  api('/api/logdeploy', { pkg: job.pkg, line: JSON.stringify({ time: new Date().toISOString(), event: 'end', mode: job.mode, target: job.target, jobId: job.id, status: d.status, backupId: job.backupId || job.rolledBack || '' }) })
+    .then(loadHistory).catch(() => { });
+  if (job.backupId && (job.mode === 'deploy' || job.mode === 'quick')) {
+    $('jobBox').insertAdjacentHTML('beforeend', d.status === 'Failed' || d.status === 'Canceled'
+      ? '<div class="small muted" style="margin-top:8px">Nothing was changed in the target (a failed deploy is undone automatically), so there\'s nothing to roll back.</div>'
+      : `<div class="row" style="margin-top:10px"><button class="danger" data-rollback-pkg="${esc(job.pkg)}" data-rollback-id="${esc(job.backupId)}">Roll Back This Deployment…</button>
+         <span class="small muted">Also available later under Package history.</span></div>`);
+  }
+  updateDeployButtons();
+}
+
+function findBackup(pkgName, id) {
+  return S.packages.find(p => p.name === pkgName)?.backups.find(b => b.id === id);
+}
+
+async function cancelJob() {
+  const job = S.job;
+  if (!job?.id || !await uiConfirm('Cancel this deployment?')) return;
+  try { parseSf(await api('/api/cancel', { target: job.target, jobId: job.id })); log('Cancel requested.'); }
+  catch (e) { await uiAlert('Cancel failed: ' + e.message); }
+}
+
+async function findTests() {
+  const src = S.pkg?.components || [...S.selected.values()];
+  const names = src.filter(c => c.type === 'ApexClass' && /test/i.test(c.fullName)).map(c => c.fullName);
+  if (!names.length) return await uiAlert('No Apex classes with "test" in the name are in the package.');
+  $('tests').value = names.join(', ');
+}
+
+/* ---------------- History ---------------- */
+
+async function loadHistory() {
+  try {
+    const r = await api('/api/packages');
+    S.packages = arr(r.packages).map(p => {
+      let meta = {}; try { meta = JSON.parse(p.meta || '{}'); } catch { }
+      const deploys = (p.deploys || '').split('\n').filter(Boolean).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+      const backups = arr(p.backups).map(t => { try { return JSON.parse(t); } catch { return null; } }).filter(Boolean)
+        .sort((a, b) => b.created.localeCompare(a.created));
+      return { ...p, meta, deploys, backups, components: parsePackageXml(p.packageXml || '') };
+    });
+    renderHistory();
+  } catch (e) { $('hist').innerHTML = `<span class="muted small">${esc(e.message)}</span>`; }
+}
+
+// A package is "failed" when it has been validated or deployed and nothing ever succeeded.
+function packageFailed(p) {
+  const ends = p.deploys.filter(d => d.event === 'end' && d.mode !== 'rollback');
+  return ends.length > 0 && !ends.some(d => /^Succeeded/.test(d.status));
+}
+
+function renderHistory() {
+  const archived = S.packages.filter(p => p.archived).length;
+  $('archCount').textContent = archived;
+  updateSummaries();
+  const show = $('showArchived').checked;
+  const list = S.packages.map((p, i) => [p, i]).filter(([p]) => show || !p.archived);
+  if (!list.length) { $('hist').innerHTML = `<span class="muted small">${S.packages.length ? 'All packages are archived.' : 'No packages yet.'}</span>`; return; }
+  $('hist').innerHTML = list.map(([p, i]) => {
+    const ends = p.deploys.filter(d => d.event === 'end');
+    // Latest result per org and kind of run (validate / deploy / rollback), newest first.
+    const latest = new Map();
+    for (const d of ends) latest.set(d.target + '|' + (d.mode === 'quick' ? 'deploy' : d.mode), d);
+    const pills = [...latest.values()].reverse().map(d => {
+      const ok = /^Succeeded/.test(d.status);
+      return `<span class="badge ${ok ? 'sbx' : 'prod'}" title="${esc(`${fmtDate(d.time)} · ${d.target}`)}">${esc(d.mode)} → ${esc(orgLabel(d.target))}: ${esc(d.status)}</span>`;
+    }).join(' ');
+    const line2 = [p.meta.note ? `<span class="small">${esc(p.meta.note)}</span>` : '', pills, p.hasZip ? '' : '<span class="badge warn">not retrieved</span>'].filter(Boolean).join(' ');
+    return `<div class="histrow${p.archived ? ' archived' : ''}">
+      <div class="histmain">
+        <span class="t">${esc(p.name)}</span>
+        <span class="small muted">${esc(fmtDate(p.meta.created))} · ${p.components.length} components · from ${esc(p.meta.sourceLabel || p.meta.sourceOrg || '?')}</span>
+      </div>
+      <div class="histbtns">
+        <button class="small" data-use="${i}" ${p.hasZip ? '' : 'disabled'}>Use for Deploy</button>
+        <button class="small" data-copy="${i}">Copy to Selection</button>
+        <button class="small" data-open="${esc(p.name)}">Open Folder</button>
+        <button class="small" data-archive="${i}">${p.archived ? 'Unarchive' : 'Archive'}</button>
+        <button class="small danger" data-delete="${i}">Delete</button>
+      </div>
+      ${line2 ? `<div class="histline2">${line2}</div>` : ''}
+      ${p.backups.length ? `<div class="rbpoints">${p.backups.map(b => rollbackRow(p, b)).join('')}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+async function setArchived(pkgs, archived) {
+  if (!pkgs.length) return;
+  for (const p of pkgs) await api('/api/package/archive', { pkg: p.name, archived });
+  log(`${archived ? 'Archived' : 'Unarchived'} ${pkgs.map(p => p.name).join(', ')}.`);
+  await loadHistory();
+}
+
+async function deletePackage(p) {
+  const rb = p.backups.length ? `\nIts ${p.backups.length} rollback point(s) will be deleted too, so those deploys can no longer be rolled back.` : '';
+  if (!await uiConfirm(`Delete package "${p.name}" and its folder from this computer?${rb}\nThis can't be undone. (Archive hides it instead.)`, { ok: 'Delete', danger: true })) return;
+  try {
+    await api('/api/package/delete', { pkg: p.name });
+    if (S.pkg?.name === p.name) { S.pkg = null; renderCurrentPkg(); }
+    log(`Deleted package ${p.name}.`);
+  } catch (e) { await uiAlert('Delete failed: ' + e.message); }
+  await loadHistory();
+}
+
+async function archiveFailed() {
+  const failed = S.packages.filter(p => !p.archived && packageFailed(p));
+  if (!failed.length) return await uiAlert('No packages where every validation or deploy failed.');
+  if (await uiConfirm(`Archive ${failed.length} package(s) where every validation or deploy failed?\n\n${failed.map(p => p.name).join('\n')}`)) setArchived(failed, true);
+}
+
+/* ---------------- Steps ---------------- */
+
+function setCollapsed(id, collapsed) {
+  $(id).classList.toggle('collapsed', collapsed);
+  // Package History and Activity Log open together with step 4.
+  if (id === 'step4' && !collapsed) { $('stepHist').classList.remove('collapsed'); $('stepLog').classList.remove('collapsed'); }
+  updateSummaries();
+}
+
+// Opens step n and collapses the steps before it to their one-line summaries. Step 4 never auto-collapses.
+function goStep(n, scroll = true) {
+  for (let i = 1; i < n; i++) setCollapsed('step' + i, true);
+  setCollapsed('step' + n, false);
+  if (scroll) setTimeout(() => $('step' + n).scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+}
+
+function orgLabel(org) {
+  if (!org) return '—';
+  const o = S.orgs.find(x => x.username === org);
+  return o?.alias || S.info[org]?.name || org;
+}
+
+function updateSummaries() {
+  const src = $('srcOrg').value, tgt = $('tgtOrg').value;
+  const pill = org => { const k = orgKind(S.info[org]); return k ? ` <span class="badge ${k.cls}">${k.label}</span>` : ''; };
+  $('sum1').innerHTML = `Source: ${esc(orgLabel(src))}${pill(src)} &nbsp;→&nbsp; Target: ${esc(orgLabel(tgt))}${pill(tgt)}`;
+  $('sum2').textContent = `Metadata Scan: ${selectedTypes().length} types` + (S.items.length ? ` · ${S.items.length} components found` : ' · not scanned yet');
+  const types = new Set([...S.selected.values()].map(m => m.type)).size;
+  $('sum3').textContent = `Package Name: ${$('pkgName').value || '—'} · Selected Components: ${S.selected.size} · ${types} types`;
+  $('sum4').textContent = S.pkg ? `${S.pkg.name} → ${orgLabel(tgt)}` : '';
+  const active = S.packages.filter(p => !p.archived).length;
+  $('sumHist').textContent = `${active} package${active === 1 ? '' : 's'}`;
+}
+
+// One row per rollback point, with the outcome of the deploy it was taken for and of any rollback since.
+function rollbackRow(p, b) {
+  const ev = p.deploys.filter(d => d.event === 'end' && d.backupId === b.id);
+  const dep = ev.filter(d => d.mode !== 'rollback').pop(), rb = ev.filter(d => d.mode === 'rollback').pop();
+  const depFailed = dep && ['Failed', 'Canceled'].includes(dep.status);
+  const state = rb ? `<span class="badge ${rb.status === 'Succeeded' ? 'sbx' : 'prod'}">rolled back: ${esc(rb.status)}</span>`
+    : depFailed ? '<span class="badge">deploy failed, nothing to undo</span>'
+    : dep ? `<span class="badge sbx">deployed: ${esc(dep.status)}</span>` : '<span class="badge">deploy result unknown</span>';
+  return `<div class="rbrow small">
+    <span>↩ Rollback Point · ${esc(b.targetLabel || b.target)} · ${esc(fmtDate(b.created))} · restores ${b.restored}, deletes ${arr(b.added).length}</span>
+    ${state}
+    <button class="small danger" data-rollback-pkg="${esc(p.name)}" data-rollback-id="${esc(b.id)}" ${depFailed ? 'disabled' : ''}>Roll Back…</button>
+  </div>`;
+}
+
+/* ---------------- Wiring ---------------- */
+
+function wire() {
+  $('srcOrg').onchange = () => onOrgChange('source');
+  // Picking the target completes step 1.
+  $('tgtOrg').onchange = () => { onOrgChange('target'); if ($('srcOrg').value && $('tgtOrg').value) goStep(2); };
+  $('btnSwap').onclick = () => { const a = $('srcOrg').value; $('srcOrg').value = $('tgtOrg').value; $('tgtOrg').value = a; onOrgChange('source'); onOrgChange('target'); };
+  $('btnRefreshOrgs').onclick = loadOrgs;
+  $('connList').onclick = e => { const b = e.target.closest('[data-rename]'); if (b) renameOrg(b.dataset.rename); };
+  $('connBox').classList.toggle('closed', store.get('connClosed', false));
+  $('connHead').onclick = () => { const c = $('connBox').classList.toggle('closed'); store.set('connClosed', c); };
+  $('btnShowLogin').onclick = () => { $('loginForm').hidden = !$('loginForm').hidden; };
+  $('btnShowLogout').onclick = () => { $('logoutForm').hidden = !$('logoutForm').hidden; };
+  $('loginEnv').onchange = () => { $('loginUrlWrap').hidden = $('loginEnv').value !== 'custom'; };
+  $('btnLogin').onclick = doLogin;
+  $('btnLogout').onclick = doLogout;
+
+  $('typeGrid').addEventListener('change', updateTypeCount);
+  $('typeGrid').addEventListener('click', e => {
+    const g = e.target.dataset?.group; if (!g) return;
+    e.preventDefault();
+    const boxes = [...$('typeGrid').querySelectorAll('input')].filter(i => TYPE_GROUPS[g].includes(i.value));
+    const on = !boxes.every(b => b.checked);
+    boxes.forEach(b => b.checked = on); updateTypeCount();
+  });
+  $('extraTypes').oninput = updateTypeCount;
+  $('btnScan').onclick = scan;
+
+  for (const id of ['since', 'byFilter', 'statusFilter', 'onlyChanged', 'hideManaged']) $(id).addEventListener('change', () => {
+    if (id === 'since') store.set('since', $('since').value);
+    $('since').disabled = !$('onlyChanged').checked;
+    renderRows();
+  });
+  $('search').addEventListener('input', renderRows);
+  document.querySelectorAll('th[data-sort]').forEach(th => th.onclick = () => {
+    const k = th.dataset.sort;
+    S.sort = { key: k, dir: S.sort.key === k ? -S.sort.dir : (k === 'lastModifiedDate' ? -1 : 1) };
+    renderRows();
+  });
+  $('rows').addEventListener('change', e => {
+    const tr = e.target.closest('tr[data-key]'); if (!tr) return;
+    const it = S.items.find(i => key(i) === tr.dataset.key);
+    if (e.target.checked) addSel(it); else S.selected.delete(tr.dataset.key);
+    selectionChanged();
+  });
+  $('checkAll').onchange = e => {
+    for (const it of (S.visible || []).slice(0, MAX_ROWS)) e.target.checked ? addSel(it) : S.selected.delete(key(it));
+    selectionChanged();
+  };
+  $('siteChips').onclick = e => {
+    const i = e.target.dataset.site; if (i == null) return;
+    S.siteGroups[i].members.filter(m => m.type !== 'SiteDotCom').forEach(addSel);
+    selectionChanged();
+  };
+
+  $('selBox').onclick = e => { const k = e.target.dataset.remove; if (k) { S.selected.delete(k); selectionChanged(); } };
+  $('btnManualAdd').onclick = manualAdd;
+  $('btnClearSel').onclick = async () => { if (S.selected.size && await uiConfirm('Remove all components from the package?')) { S.selected.clear(); selectionChanged(); } };
+  $('btnBuild').onclick = buildPackage;
+  $('btnDownloadXml').onclick = downloadXml;
+
+  $('testLevel').onchange = onTestLevel;
+  $('btnFindTests').onclick = findTests;
+  $('btnValidate').onclick = () => startJob('validate');
+  $('btnQuick').onclick = () => startJob('quick');
+  $('btnDeploy').onclick = () => startJob('deploy');
+  $('btnCancel').onclick = cancelJob;
+
+  $('tplSelect').onchange = onTplSelect;
+  $('btnTplApply').onclick = applyTemplate;
+  $('btnTplSave').onclick = () => saveTemplate(false);
+  $('btnTplUpdate').onclick = () => saveTemplate(true);
+  $('btnTplDelete').onclick = deleteTemplate;
+
+  $('btnRefreshHist').onclick = async () => {
+    const b = $('btnRefreshHist'); b.disabled = true;
+    await loadHistory();
+    b.textContent = 'Refreshed ✓'; log('Package History refreshed.');
+    setTimeout(() => { b.textContent = 'Refresh'; b.disabled = false; }, 1500);
+  };
+  $('btnArchiveFailed').onclick = archiveFailed;
+  $('showArchived').onchange = renderHistory;
+  $('hist').onclick = e => {
+    const t = e.target;
+    if (t.dataset.use) {
+      const p = S.packages[t.dataset.use];
+      S.pkg = { name: p.name, components: p.components, sourceOrg: p.meta.sourceOrg, sourceLabel: p.meta.sourceLabel, apiVersion: p.meta.apiVersion };
+      S.validation = null; renderCurrentPkg();
+      log(`Using package ${p.name} for deploy.`);
+      goStep(4);
+    }
+    if (t.dataset.copy) {
+      S.packages[t.dataset.copy].components.forEach(addSel); selectionChanged();
+      log(`Copied ${S.packages[t.dataset.copy].components.length} components into the selection.`);
+      goStep(3);
+    }
+    if (t.dataset.archive) { const p = S.packages[t.dataset.archive]; setArchived([p], !p.archived); }
+    if (t.dataset.delete) deletePackage(S.packages[t.dataset.delete]);
+  };
+
+  // Collapsed sections open on any click inside them; an open section's header collapses it.
+  document.querySelectorAll('.step').forEach(sec => sec.addEventListener('click', e => {
+    if (sec.classList.contains('collapsed')) { e.preventDefault(); e.stopPropagation(); setCollapsed(sec.id, false); return; }
+    if (e.target.closest('.stephead') && !e.target.closest('button, a, input, select')) setCollapsed(sec.id, true);
+  }, true));
+  document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => goStep(+b.dataset.goto));
+  $('pkgName').addEventListener('input', updateSummaries);
+  document.addEventListener('click', async e => {
+    const rbPkg = e.target.dataset?.rollbackPkg;
+    if (rbPkg) {
+      const b = findBackup(rbPkg, e.target.dataset.rollbackId);
+      if (b) rollbackTo(rbPkg, b); else await uiAlert('That rollback point is still being saved. Try again in a moment.');
+      return;
+    }
+    const name = e.target.dataset?.open;
+    if (name) api('/api/open', { pkg: name }).catch(err => uiAlert(err.message));
+  });
+  $('btnStop').onclick = async () => {
+    if (!await uiConfirm('Stop Metadata Mover? Running deployments keep going in Salesforce.', { ok: 'Stop Server', danger: true })) return;
+    try { await api('/api/shutdown', {}); } catch { }
+    document.body.innerHTML = '<main><div class="card">Metadata Mover stopped. You can close this tab.</div></main>';
+  };
+}
+
+async function init() {
+  wire();
+  renderTypeGrid();
+  const d = new Date(Date.now() - 14 * 864e5); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  $('since').value = store.get('since', '') || d.toISOString().slice(0, 16);
+  for (const m of store.get('selected', [])) if (m && m.type && m.fullName) S.selected.set(key(m), m);
+  renderSelection(); renderCurrentPkg(); onTestLevel();
+  loadHistory();
+  loadTemplates();
+  if (await loadHealth()) await loadOrgs();
+  // Orgs remembered from last time: start on step 2.
+  if ($('srcOrg').value && $('tgtOrg').value) goStep(2, false);
+  updateSummaries();
+}
+init();
+</script>
+</body>
+</html>
