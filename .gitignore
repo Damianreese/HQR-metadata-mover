@@ -6,5 +6,11 @@ templates.json.bak
 # Recreated by the tool on first run.
 .sf-workspace/
 
-# Built zips (attach them to a GitHub Release instead).
+# Built downloads (build.ps1 makes them; attach them to a GitHub Release instead).
 *.zip
+dist/
+server.log
+server-previous.log
+running.json
+browser-profile/
+tools/

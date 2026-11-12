@@ -1,17 +1,27 @@
 <#
-  Metadata Mover - local server.
-  Wraps the Salesforce CLI (sf) and serves the UI at http://localhost:<port>/
-  Start it with Start-MetadataMover.cmd, or:
-    powershell -NoProfile -ExecutionPolicy Bypass -File server.ps1 [-Port 8765] [-NoBrowser]
+  HQR Metadata Mover - local server. House of Quintanilla-Reese LLC - MIT License
+  Wraps the Salesforce CLI (sf) and serves the UI at http://localhost:<port>/ (this PC only).
+  Start it from the HQR Metadata Mover shortcut, or:
+    powershell -NoProfile -ExecutionPolicy Bypass -File server.ps1 [-Port 8770] [-NoBrowser] [-DataDir <folder>] [-IdleMinutes 10]
+  It opens in its own Chrome or Edge app window, and stops by itself once no window has been open for -IdleMinutes.
 #>
-param([int]$Port = 8765, [switch]$NoBrowser)
+param([int]$Port = 8770, [switch]$NoBrowser, [string]$DataDir = '', [int]$IdleMinutes = 10)
 
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
+$AppName = 'HQR Metadata Mover'
+$Version = '1.0.0'
 $Root = $PSScriptRoot
-$PkgRoot = Join-Path $Root 'packages'
-$WorkDir = Join-Path $Root '.sf-workspace'
+# Packages, templates and the log live in Documents\HQR Metadata Mover, outside the program folder, so they
+# survive upgrades and uninstalling. A copy run from a folder that already has packages\ keeps using that folder.
+if (-not $DataDir) {
+  $DataDir = if (Test-Path (Join-Path $Root 'packages')) { $Root } else { Join-Path ([Environment]::GetFolderPath('MyDocuments')) $AppName }
+}
+$PkgRoot = Join-Path $DataDir 'packages'
+$WorkDir = Join-Path $DataDir '.sf-workspace'
+$LogFile = Join-Path $DataDir 'server.log'
+$RunFile = Join-Path $DataDir 'running.json'
 $Utf8 = New-Object System.Text.UTF8Encoding($false)
 # Random per-run token: the page gets it embedded, so other websites can't call this API.
 $Token = [guid]::NewGuid().ToString('N')
@@ -23,15 +33,99 @@ $env:SF_AUTOUPDATE_DISABLE = 'true'
 $env:SF_USE_PROGRESS_BAR = 'false'
 $env:FORCE_COLOR = '0'
 
+function Find-AppBrowser {
+  # Chrome or Edge can show a page as its own app window (no tabs, no address bar).
+  foreach ($exe in 'chrome.exe', 'msedge.exe') {
+    foreach ($hive in 'HKCU:', 'HKLM:') {
+      $p = (Get-ItemProperty "$hive\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\$exe" -ErrorAction SilentlyContinue).'(default)'
+      if ($p -and (Test-Path $p)) { return $p }
+    }
+  }
+  $null
+}
+function Open-AppWindow([string]$Url) {
+  if ($NoBrowser) { return }
+  try {
+    $b = Find-AppBrowser
+    if (-not $b) { Start-Process $Url; return }
+    # A private browser profile just for this window: keeps it out of the person's tabs and keeps the
+    # browser from stamping their profile picture on the taskbar icon.
+    # It sits next to the program, except where the program folder is read-only (the Microsoft Store version).
+    $profileDir = Join-Path $Root 'browser-profile'
+    try { [void][IO.Directory]::CreateDirectory($profileDir) }
+    catch { $profileDir = Join-Path $env:LOCALAPPDATA "$AppName\browser-profile" }
+    # Fit the window inside the main screen's usable area (above the taskbar), centered.
+    $w = 1400; $h = 940; $x = 40; $y = 20
+    try {
+      Add-Type -AssemblyName System.Windows.Forms
+      $wa = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+      $w = [math]::Min(1400, $wa.Width - 40); $h = [math]::Min(940, $wa.Height - 20)
+      $x = $wa.X + [int](($wa.Width - $w) / 2); $y = $wa.Y + [int](($wa.Height - $h) / 2)
+    } catch {}
+    Start-Process $b -ArgumentList @(
+      "--app=$Url", "--window-size=$w,$h", "--window-position=$x,$y", "--user-data-dir=`"$profileDir`"",
+      '--no-first-run', '--no-default-browser-check', '--disable-sync')
+  } catch { Start-Process $Url }
+}
+# Brings an open HQR Metadata Mover window to the front. Returns $false when there isn't one.
+function Show-ExistingWindow {
+  if ($NoBrowser) { return $true }
+  try {
+    if (-not ('HQR.MMWin' -as [type])) {
+      Add-Type -Namespace HQR -Name MMWin -MemberDefinition @'
+public delegate bool EnumProc(System.IntPtr h, System.IntPtr l);
+[System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc cb, System.IntPtr l);
+[System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+public static extern int GetWindowText(System.IntPtr h, System.Text.StringBuilder s, int n);
+[System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool IsWindowVisible(System.IntPtr h);
+[System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool ShowWindowAsync(System.IntPtr h, int cmd);
+[System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool SetForegroundWindow(System.IntPtr h);
+public static bool Focus(string title) {
+    System.IntPtr found = System.IntPtr.Zero;
+    EnumWindows(delegate (System.IntPtr h, System.IntPtr l) {
+        if (!IsWindowVisible(h)) return true;
+        var sb = new System.Text.StringBuilder(512);
+        GetWindowText(h, sb, 512);
+        if (sb.ToString() == title) { found = h; return false; }
+        return true;
+    }, System.IntPtr.Zero);
+    if (found == System.IntPtr.Zero) return false;
+    ShowWindowAsync(found, 9);   // 9 = SW_RESTORE
+    SetForegroundWindow(found);
+    return true;
+}
+'@
+    }
+    [HQR.MMWin]::Focus($AppName)
+  } catch { $false }
+}
+
+# Already running (e.g. the shortcut was clicked again)? Open that copy instead of starting a second one.
+if (Test-Path $RunFile) {
+  try {
+    $run = [IO.File]::ReadAllText($RunFile) | ConvertFrom-Json
+    $r = Invoke-WebRequest "http://localhost:$($run.port)/" -UseBasicParsing -TimeoutSec 3
+    if ($r.StatusCode -eq 200 -and $r.Content -match [regex]::Escape($AppName)) {
+      if (-not (Show-ExistingWindow)) { Open-AppWindow "http://localhost:$($run.port)/" }
+      exit 0
+    }
+  } catch {}
+}
+
 # sf commands run from a minimal project folder so every command works regardless of version.
 $null = New-Item -ItemType Directory -Force -Path $PkgRoot, (Join-Path $WorkDir 'force-app')
+try { (Get-Item $WorkDir -Force).Attributes += 'Hidden' } catch {}
+if (Test-Path $LogFile) { Move-Item $LogFile (Join-Path $DataDir 'server-previous.log') -Force }
 $projFile = Join-Path $WorkDir 'sfdx-project.json'
 if (-not (Test-Path $projFile)) {
   [IO.File]::WriteAllText($projFile, '{"packageDirectories":[{"path":"force-app","default":true}],"sourceApiVersion":"60.0"}', $Utf8)
 }
 
+# Also written to server.log, since the installed app runs without a console window.
 function Write-Log([string]$Msg, [string]$Color = 'Gray') {
-  Write-Host ("[{0:HH:mm:ss}] {1}" -f (Get-Date), $Msg) -ForegroundColor $Color
+  $line = "[{0:HH:mm:ss}] {1}" -f (Get-Date), $Msg
+  Write-Host $line -ForegroundColor $Color
+  try { [IO.File]::AppendAllText($LogFile, $line + "`r`n", $Utf8) } catch {}
 }
 
 function Find-Sf {
@@ -318,7 +412,7 @@ function Handle-Request($Ctx) {
     '/api/health' {
       # 'stale' tells the page that server.ps1 changed after this server started, so it needs a restart.
       $stale = (Get-Item (Join-Path $Root 'server.ps1')).LastWriteTime -gt $script:StartedAt
-      Send-Json $Ctx @{ sf = [bool]$SfPath; sfPath = $SfPath; sfVersion = $script:SfVersion; packagesDir = $PkgRoot; stale = $stale }
+      Send-Json $Ctx @{ sf = [bool]$SfPath; sfPath = $SfPath; sfVersion = $script:SfVersion; packagesDir = $PkgRoot; dataDir = $DataDir; version = $Version; stale = $stale }
       return
     }
     '/api/orgs' {
@@ -507,7 +601,7 @@ function Handle-Request($Ctx) {
       return
     }
     '/api/templates' {
-      $f = Join-Path $Root 'templates.json'
+      $f = Join-Path $DataDir 'templates.json'
       if ($b -and $null -ne $b.json) {
         $text = [string]$b.json
         $null = $text | ConvertFrom-Json  # refuse to save anything that isn't valid JSON
@@ -539,10 +633,21 @@ function Handle-Request($Ctx) {
       return
     }
     '/api/open' {
-      $name = Assert-PkgName $b.pkg
-      $dir = Join-Path $PkgRoot $name
+      $dir = $DataDir
+      if ($b.pkg) { $dir = Join-Path $PkgRoot (Assert-PkgName $b.pkg) }
       if (-not (Test-Path $dir)) { $dir = $PkgRoot }
       Start-Process explorer.exe $dir
+      Send-Json $Ctx @{ ok = $true }
+      return
+    }
+    '/api/ping' {
+      Send-Json $Ctx @{ ok = $true }
+      return
+    }
+    '/api/openurl' {
+      # Links open in the person's normal browser, where they're signed in to Salesforce, not in the app window.
+      $u = Assert-Match $b.url '^(https?://|mailto:)[^\s"]{1,4000}$' 'link'
+      Start-Process $u
       Send-Json $Ctx @{ ok = $true }
       return
     }
@@ -571,25 +676,45 @@ for ($p = $Port; $p -lt $Port + 10; $p++) {
   $l.Prefixes.Add("http://localhost:$p/")
   try { $l.Start(); $listener = $l; $Port = $p; break } catch { $l.Close() }
 }
-if (-not $listener) { throw "Could not open a local port between $Port and $($Port + 9)." }
+if (-not $listener) {
+  $msg = "Could not open a local port between $Port and $($Port + 9)."
+  Write-Log $msg 'Red'
+  Add-Type -AssemblyName PresentationFramework
+  [void][System.Windows.MessageBox]::Show("$AppName couldn't start.`n`n$msg`n`nDetails: $LogFile", $AppName)
+  exit 1
+}
 
 $url = "http://localhost:$Port/"
-Write-Log "Metadata Mover is running at $url  (Ctrl+C or the Stop button to quit)" 'Green'
+[IO.File]::WriteAllText($RunFile, (ConvertTo-Json -Compress -InputObject @{ pid = $PID; port = $Port }), $Utf8)
+Write-Log "$AppName $Version is running at $url  (Ctrl+C or the Stop Server button to quit)" 'Green'
 Write-Log "Packages are saved in $PkgRoot"
-if (-not $NoBrowser) { Start-Process $url }
+Open-AppWindow $url
 
+# The page checks in every minute. When nothing has called for this long (its window was closed), the server
+# stops on its own instead of lingering in the background. Deployments already started carry on in Salesforce.
+$IdleLimit = [TimeSpan]::FromMinutes($IdleMinutes)
+$script:LastSeen = Get-Date
+$tick = Get-Date
 try {
   while ($script:Running) {
     $task = $listener.GetContextAsync()
-    while (-not $task.AsyncWaitHandle.WaitOne(250)) { }
+    while (-not $task.AsyncWaitHandle.WaitOne(250)) {
+      # A long gap between checks means the PC was asleep: give the window time to check in again after waking.
+      if ((Get-Date) - $tick -gt [TimeSpan]::FromMinutes(1)) { $script:LastSeen = Get-Date }
+      $tick = Get-Date
+      if ((Get-Date) - $script:LastSeen -gt $IdleLimit) { Write-Log "No window open for $IdleMinutes min; stopping."; $script:Running = $false; break }
+    }
+    if (-not $script:Running) { break }
     $ctx = $task.Result
     try { Handle-Request $ctx }
     catch {
       Write-Log "Error: $($_.Exception.Message)" 'Red'
       try { Send-Json $ctx @{ error = $_.Exception.Message } 500 } catch {}
     }
+    $script:LastSeen = Get-Date
   }
 } finally {
   $listener.Stop(); $listener.Close()
+  Remove-Item $RunFile -Force -ErrorAction SilentlyContinue
   Write-Log 'Stopped.'
 }

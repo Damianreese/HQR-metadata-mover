@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- HQR Metadata Mover - Microsoft Store package manifest. build-store.ps1 fills in {{VERSION}}.
+     Identity, Publisher and PublisherDisplayName come from Partner Center (Product identity) and must match it exactly. -->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap rescap">
+
+  <Identity
+    Name="HouseofQuintanilla-ReeseL.HQRMetadataMover"
+    Publisher="CN=03C89C1C-2F63-4CE9-A081-EE39407BFEAB"
+    Version="{{VERSION}}"
+    ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>HQR Metadata Mover</DisplayName>
+    <PublisherDisplayName>House of Quintanilla-Reese LLC</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+    <Description>Deploy Salesforce metadata between orgs: find changes, package, validate, deploy and roll back.</Description>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+
+  <Applications>
+    <Application Id="HQRMetadataMover" Executable="HQRMetadataMover.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="HQR Metadata Mover"
+        Description="Deploy Salesforce metadata between orgs: find changes, package, validate, deploy and roll back."
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+      </uap:VisualElements>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

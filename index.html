@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Metadata Mover</title>
+<title>HQR Metadata Mover</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230b6bcb' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2.5' y='2.5' width='9' height='9' rx='2'/%3E%3Crect x='12.5' y='12.5' width='9' height='9' rx='2'/%3E%3Cpath d='M14.5 5H17a3 3 0 0 1 3 3v1.5M17.6 7.6 20 10l2.4-2.4M9.5 19H7a3 3 0 0 1-3-3v-1.5M6.4 16.4 4 14l-2.4 2.4'/%3E%3C/svg%3E">
 <style>
 :root {
   --bg: #f5f6f8; --card: #ffffff; --text: #1d2330; --muted: #677085; --line: #e1e4ea;
@@ -135,18 +136,39 @@ dialog#dlg::backdrop { background: rgba(15, 20, 30, .45); }
 .dlgbtns { justify-content: flex-end; margin-top: 16px; }
 button.danger-fill { background: var(--bad); border-color: var(--bad); color: #fff; }
 #staleBanner { display: flex; gap: 10px; align-items: center; }
+.brand { display: flex; align-items: center; gap: 9px; }
+.brand svg { width: 24px; height: 24px; color: var(--accent); flex: none; }
+.brand .hqr { color: var(--accent); letter-spacing: .02em; }
+.credit { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.credit .who { flex: 1; min-width: 240px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.credit .who b { color: var(--text); font-weight: 650; }
+.credit a { color: var(--accent); text-decoration: none; font-weight: 550; }
+.credit a:hover { text-decoration: underline; }
+.privacy { display: flex; gap: 8px; align-items: flex-start; margin-top: 6px; font-size: 12.5px; }
+.privacy svg { width: 15px; height: 15px; flex: none; margin-top: 2px; color: var(--ok); }
+.credit .fine { margin-top: 4px; font-size: 12px; }
+.menuwrap { position: relative; }
+.menu { position: absolute; right: 0; bottom: calc(100% + 6px); min-width: 230px; z-index: 20; padding: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.16); }
+.menu a, .menu button { display: block; width: 100%; text-align: left; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--text); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; text-decoration: none; }
+.menu a:hover, .menu button:hover { background: var(--row-hover); text-decoration: none; }
+.menu .sep { height: 1px; background: var(--line); margin: 6px 4px; }
+.btn-share { display: inline-flex; align-items: center; gap: 7px; }
+.btn-share svg { width: 16px; height: 16px; color: var(--accent); }
 </style>
 </head>
 <body>
 <header>
-  <h1>Metadata Mover</h1>
+  <div class="brand">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="2.5" width="9" height="9" rx="2"/><rect x="12.5" y="12.5" width="9" height="9" rx="2"/><path d="M14.5 5H17a3 3 0 0 1 3 3v1.5M17.6 7.6 20 10l2.4-2.4M9.5 19H7a3 3 0 0 1-3-3v-1.5M6.4 16.4 4 14l-2.4 2.4"/></svg>
+    <h1><span class="hqr">HQR</span> Metadata Mover</h1>
+  </div>
   <span id="sfStatus" class="badge">checking sf…</span>
   <span class="sp"></span>
   <button id="btnStop" class="danger" title="Stop the local server">Stop Server</button>
 </header>
 
 <dialog id="dlg">
-  <h3 id="dlgTitle">Metadata Mover</h3>
+  <h3 id="dlgTitle">HQR Metadata Mover</h3>
   <div id="dlgMsg"></div>
   <input type="text" id="dlgInput" hidden>
   <div class="row dlgbtns">
@@ -157,12 +179,12 @@ button.danger-fill { background: var(--bad); border-color: var(--bad); color: #f
 
 <main>
   <div id="staleBanner" class="notice bad" hidden>
-    <strong>Metadata Mover was updated.</strong> Restart it to finish: close its console window, then double-click Start-MetadataMover.cmd. Until then, newer buttons won't work.
+    <strong>HQR Metadata Mover was updated.</strong> Restart it to finish: click Stop Server, then open it again from its shortcut. Until then, newer buttons won't work.
   </div>
   <div id="sfMissing" class="notice warn" hidden>
     The Salesforce CLI (<code>sf</code>) wasn't found. Install it from
     <a href="https://developer.salesforce.com/tools/salesforcecli" target="_blank" rel="noopener">developer.salesforce.com/tools/salesforcecli</a>,
-    then close this tab and start Metadata Mover again.
+    then click Stop Server and open HQR Metadata Mover again.
   </div>
 
   <!-- 1. Orgs -->
@@ -359,10 +381,45 @@ button.danger-fill { background: var(--bad); border-color: var(--bad); color: #f
     <h2 class="stephead">Activity Log <span class="stepsum"></span><span class="chev">▾</span></h2>
     <div class="stepbody"><div id="log" class="muted"></div></div>
   </section>
+
+  <footer class="card credit">
+    <div class="who">
+      <b>HQR Metadata Mover</b> <span id="verLabel"></span> is free to use and share.<br>
+      Created by House of Quintanilla-Reese LLC ·
+      <a href="https://quintanillareese.com" target="_blank" rel="noopener">quintanillareese.com</a>
+      <div class="privacy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+        <span>Private by design: everything stays on this PC. It only talks to the Salesforce orgs you connect, through your own Salesforce CLI logins. No accounts, tracking or data collection.
+        Your packages are saved in <a href="#" id="openData" title="Open this folder">Documents\HQR Metadata Mover</a>.</span></div>
+      <div class="fine">Not affiliated with or endorsed by Salesforce, Inc. Provided as is, without warranty: validate before you deploy to production.</div>
+    </div>
+    <div class="menuwrap">
+      <button class="btn-share" id="btnShare" aria-haspopup="menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg>
+        Share with a colleague <span aria-hidden="true">▾</span>
+      </button>
+      <div class="menu" id="shareMenu" role="menu" hidden>
+        <a role="menuitem" id="shareGmail" target="_blank" rel="noopener">Send with Gmail</a>
+        <a role="menuitem" id="shareOutlook" target="_blank" rel="noopener">Send with Outlook.com</a>
+        <a role="menuitem" id="shareMail">Use my email app</a>
+        <div class="sep"></div>
+        <button role="menuitem" id="shareCopy">Copy the message</button>
+      </div>
+    </div>
+  </footer>
 </main>
 
 <script>
 const TOKEN = '{{TOKEN}}';
+let pingTimer = null;
+// http://localhost:8770/?demo shows a made-up company's orgs and changes (for screenshots). Nothing real is read or changed.
+const DEMO = new URLSearchParams(location.search).has('demo');
+
+// Where people can download HQR Metadata Mover. Point this at the download page once it exists.
+const SHARE_URL = 'https://quintanillareese.com';
+const SHARE_SUBJECT = 'Try HQR Metadata Mover: free Salesforce deployment tool';
+const SHARE_BODY = "I've been using HQR Metadata Mover, a free Windows tool for moving Salesforce metadata between orgs. " +
+  'It finds what you changed (including Experience Cloud sites that Change Sets miss), builds a package, validates, deploys ' +
+  'and can roll back.\n\nYou can get it here: ' + SHARE_URL + '\n';
 
 const TYPE_GROUPS = {
   'Experience Cloud': ['Network', 'NetworkBranding', 'CustomSite', 'ExperienceBundle', 'DigitalExperienceBundle', 'DigitalExperienceConfig',
@@ -404,8 +461,9 @@ const key = it => it.type + ':' + it.fullName;
 const arr = v => v == null ? [] : Array.isArray(v) ? v : [v];
 const fmtDate = iso => { if (!iso || iso.startsWith('1970')) return '—'; const d = new Date(iso); return isNaN(d) ? iso : d.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }); };
 const store = {
-  get(k, d) { try { const v = localStorage.getItem('mm.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
-  set(k, v) { try { localStorage.setItem('mm.' + k, JSON.stringify(v)); } catch { } },
+  p: DEMO ? 'mmdemo.' : 'mm.',
+  get(k, d) { try { const v = localStorage.getItem(this.p + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(this.p + k, JSON.stringify(v)); } catch { } },
 };
 
 function log(msg, level = '') {
@@ -416,16 +474,22 @@ function log(msg, level = '') {
 }
 
 async function api(path, body, as = 'json') {
-  const res = await fetch(path, {
-    method: body === undefined ? 'GET' : 'POST',
-    headers: { 'X-Token': TOKEN, 'Content-Type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  if (DEMO) return demoApi(path, body, as);
+  let res;
+  try {
+    res = await fetch(path, {
+      method: body === undefined ? 'GET' : 'POST',
+      headers: { 'X-Token': TOKEN, 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch {
+    throw new Error('HQR Metadata Mover has stopped running. Close this window and open it again from its shortcut.');
+  }
   const text = await res.text();
   // A 404 from the API means the running server is older than this page.
   if (res.status === 404) {
     $('staleBanner').hidden = false;
-    throw new Error('This needs a newer version of the Metadata Mover server. Close its console window and start it again.');
+    throw new Error('This needs a newer version of the HQR Metadata Mover server. Click Stop Server, then open it again from its shortcut.');
   }
   if (!res.ok) {
     let m = text; try { m = JSON.parse(text).error || text; } catch { }
@@ -434,9 +498,156 @@ async function api(path, body, as = 'json') {
   return as === 'text' ? text : JSON.parse(text);
 }
 
+/* ---------------- Demo mode (?demo): a made-up company, answered here instead of by the server ---------------- */
+
+const DEMO_ORGS = [
+  { alias: 'bw-dev', username: 'jordan.lee@brightwater.example.dev', instanceUrl: 'https://brightwater--dev.sandbox.my.salesforce.com', isSandbox: true, orgType: 'Enterprise Edition' },
+  { alias: 'bw-uat', username: 'jordan.lee@brightwater.example.uat', instanceUrl: 'https://brightwater--uat.sandbox.my.salesforce.com', isSandbox: true, orgType: 'Enterprise Edition' },
+  { alias: 'bw-prod', username: 'jordan.lee@brightwater.example', instanceUrl: 'https://brightwater.my.salesforce.com', isSandbox: false, orgType: 'Enterprise Edition' },
+];
+// [type, name, days since changed in dev, by, days since changed in UAT (null = not there), by]
+const DEMO_ITEMS = [
+  ['CustomObject', 'Referral__c', 2, 'Jordan Lee'],
+  ['CustomField', 'Referral__c.Status__c', 2, 'Jordan Lee'],
+  ['CustomField', 'Referral__c.Referred_By__c', 2, 'Jordan Lee'],
+  ['CustomField', 'Referral__c.Program__c', 3, 'Jordan Lee'],
+  ['CustomField', 'Contact.Preferred_Language__c', 5, 'Priya Shah', 40, 'Priya Shah'],
+  ['CustomField', 'Account.Region__c', 9, 'Marcus Chen', 60, 'Marcus Chen'],
+  ['ValidationRule', 'Referral__c.Require_Referral_Source', 2, 'Jordan Lee'],
+  ['ListView', 'Referral__c.Open_Referrals', 4, 'Priya Shah'],
+  ['ApexClass', 'ReferralService', 1, 'Jordan Lee'],
+  ['ApexClass', 'ReferralServiceTest', 1, 'Jordan Lee'],
+  ['ApexClass', 'EnrollmentController', 6, 'Jordan Lee', 1, 'Marcus Chen'],
+  ['ApexClass', 'EnrollmentControllerTest', 6, 'Jordan Lee', 30, 'Jordan Lee'],
+  ['ApexClass', 'AccountTriggerHandler', 140, 'Marcus Chen', 140, 'Marcus Chen'],
+  ['ApexTrigger', 'ReferralTrigger', 1, 'Jordan Lee'],
+  ['LightningComponentBundle', 'referralForm', 2, 'Jordan Lee'],
+  ['LightningComponentBundle', 'enrollmentCard', 7, 'Priya Shah', 45, 'Priya Shah'],
+  ['FlexiPage', 'Referral_Record_Page', 3, 'Priya Shah'],
+  ['Layout', 'Referral__c-Referral Layout', 3, 'Priya Shah'],
+  ['Flow', 'Referral_Intake', 1, 'Priya Shah'],
+  ['Flow', 'Enrollment_Reminder', 8, 'Priya Shah', 50, 'Priya Shah'],
+  ['PermissionSet', 'Referral_Manager', 2, 'Jordan Lee'],
+  ['PermissionSet', 'Partner_Portal_Access', 4, 'Jordan Lee', 35, 'Jordan Lee'],
+  ['CustomLabel', 'Referral_Submitted', 2, 'Priya Shah'],
+  ['Network', 'Partner Portal', 3, 'Jordan Lee', 30, 'Jordan Lee'],
+  ['NetworkBranding', 'cbPartner_Portal', 3, 'Jordan Lee', 30, 'Jordan Lee'],
+  ['CustomSite', 'Partner_Portal', 3, 'Jordan Lee', 30, 'Jordan Lee'],
+  ['DigitalExperienceBundle', 'site/Partner_Portal1', 3, 'Jordan Lee', 30, 'Jordan Lee'],
+  ['DigitalExperienceConfig', 'Partner_Portal1', 3, 'Jordan Lee', 30, 'Jordan Lee'],
+  ['NavigationMenu', 'SFDC_Default_Navigation_Partner_Portal', 4, 'Jordan Lee', 30, 'Jordan Lee'],
+  ['StaticResource', 'Partner_Portal_sf_default_cdn_3kd9x', 3, 'Jordan Lee', 30, 'Jordan Lee'],
+  ['StaticResource', 'BrightwaterLogo', 200, 'Marcus Chen', 200, 'Marcus Chen'],
+  ['CustomObject', 'Program_Enrollment__c', 90, 'Marcus Chen', 90, 'Marcus Chen'],
+  ['Profile', 'Partner Community User', 4, 'Jordan Lee', 35, 'Jordan Lee'],
+];
+const demoDays = d => new Date(Date.now() - d * 864e5 - 3.7e6 * (d % 5 + 1)).toISOString();
+const demoSleep = ms => new Promise(r => setTimeout(r, ms));
+const demoSf = result => ({ ok: true, raw: JSON.stringify({ status: 0, result }) });
+const demoXml = text => `<?xml version="1.0" encoding="UTF-8"?>\n<Package xmlns="http://soap.sforce.com/2006/04/metadata">${text}</Package>`;
+const D = { jobs: {}, n: 0, templates: [{ name: 'Experience site release', types: TYPE_GROUPS['Experience Cloud'].filter(t => t !== 'SiteDotCom'), extraTypes: '', sinceDays: 30, filters: {}, components: [] }] };
+D.packages = [
+  { name: 'Referral-Phase1', created: 12, note: 'Referral object, intake flow and permission set', target: 'bw-uat',
+    comps: [['CustomObject', 'Referral__c'], ['Flow', 'Referral_Intake'], ['PermissionSet', 'Referral_Manager'], ['Layout', 'Referral__c-Referral Layout']],
+    runs: [['validate', 'bw-uat', 'Succeeded', 11], ['deploy', 'bw-uat', 'Succeeded', 11], ['validate', 'bw-prod', 'Succeeded', 10]] },
+  { name: 'Portal-Branding', created: 20, note: 'Partner Portal colors and navigation',
+    comps: [['Network', 'Partner Portal'], ['NetworkBranding', 'cbPartner_Portal'], ['CustomSite', 'Partner_Portal'], ['DigitalExperienceBundle', 'site/Partner_Portal1'], ['DigitalExperienceConfig', 'Partner_Portal1'], ['NavigationMenu', 'SFDC_Default_Navigation_Partner_Portal']],
+    runs: [['validate', 'bw-uat', 'Succeeded', 19], ['deploy', 'bw-uat', 'Succeeded', 19], ['deploy', 'bw-prod', 'Succeeded', 15]] },
+  { name: 'Region-Field', created: 30, note: '', comps: [['CustomField', 'Account.Region__c']],
+    runs: [['validate', 'bw-uat', 'Failed', 29]] },
+].map(p => {
+  const user = a => DEMO_ORGS.find(o => o.alias === a).username;
+  const comps = p.comps.map(([type, fullName]) => ({ type, fullName }));
+  const backups = [], deploys = [];
+  for (const [mode, t, status, d] of p.runs) {
+    const id = 'bk' + (++D.n);
+    if (mode === 'deploy') backups.push(JSON.stringify({ id, target: user(t), targetLabel: t, created: demoDays(d), restored: comps.length - 1, restoreComponents: comps.slice(1), added: comps.slice(0, 1), warnings: [], apiVersion: '62.0' }));
+    deploys.push(JSON.stringify({ time: demoDays(d), event: 'end', mode, target: user(t), jobId: '0AfDM00000' + (4000 + D.n), status, backupId: mode === 'deploy' ? id : '' }));
+  }
+  return { name: p.name, meta: JSON.stringify({ name: p.name, created: demoDays(p.created), sourceOrg: user('bw-dev'), sourceLabel: 'Brightwater Health (dev)', apiVersion: '62.0', note: p.note }),
+    packageXml: buildPackageXml(comps, '62.0'), deploys: deploys.join('\n'), backups, hasZip: true, archived: false };
+});
+
+function demoList(org, queries) {
+  const target = !/\.dev$/.test(org);
+  const res = [];
+  for (const q of queries) {
+    if (q.folder || /Folder$/.test(q.type)) continue;
+    for (const [type, name, d, by, td, tby] of DEMO_ITEMS) {
+      if (type !== q.type || (target && td == null)) continue;
+      const days = target ? td + (/\.example$/.test(org) ? 5 : 0) : d;
+      res.push(`<result><fullName>${xmlEsc(name)}</fullName><type>${type}</type><lastModifiedDate>${demoDays(days)}</lastModifiedDate>` +
+        `<lastModifiedByName>${target ? tby : by}</lastModifiedByName><manageableState>unmanaged</manageableState></result>`);
+    }
+  }
+  return `<?xml version="1.0"?><listMetadataResponse>${res.join('')}</listMetadataResponse>`;
+}
+
+async function demoApi(path, b = {}, as) {
+  await demoSleep(path === '/api/listmetadata' ? 60 : 250);
+  const pkg = n => D.packages.find(p => p.name === n);
+  const org = u => DEMO_ORGS.find(o => o.username === u);
+  switch (path) {
+    case '/api/health':
+      if (!store.get('source', '')) { store.set('source', DEMO_ORGS[0].username); store.set('target', DEMO_ORGS[1].username); }
+      return { sf: true, sfVersion: '@salesforce/cli/2.156.8 win32-x64 node-v24.22.1', dataDir: 'C:\\Users\\you\\Documents\\HQR Metadata Mover', version: '1.0.0' };
+    case '/api/orgs':
+      return demoSf({ nonScratchOrgs: DEMO_ORGS.map(o => ({ alias: o.alias, username: o.username, instanceUrl: o.instanceUrl, connectedStatus: 'Connected' })) });
+    case '/api/orginfo': {
+      const o = org(b.org);
+      return { org: o.username, username: o.username, apiVersion: '62.0', instanceUrl: o.instanceUrl, isSandbox: o.isSandbox, orgType: o.orgType,
+        name: 'Brightwater Health' + (o.isSandbox ? ` (${o.alias.slice(3)})` : ''), userFullName: 'Jordan Lee' };
+    }
+    case '/api/listmetadata': return demoList(b.org, b.queries);
+    case '/api/templates':
+      if (b.json !== undefined) D.templates = JSON.parse(b.json);
+      return { raw: JSON.stringify(D.templates) };
+    case '/api/retrieve': {
+      const comps = parsePackageXml(b.packageXml);
+      D.packages = D.packages.filter(p => p.name !== b.name);
+      D.packages.unshift({ name: b.name, meta: JSON.stringify({ name: b.name, created: new Date().toISOString(), sourceOrg: b.org, sourceLabel: b.sourceLabel, apiVersion: b.apiVersion, note: b.note }),
+        packageXml: b.packageXml, deploys: '', backups: [], hasZip: true, archived: false });
+      await demoSleep(1500);
+      return demoSf({ fileProperties: comps.map(c => ({ fileName: `unpackaged/${c.type}/${c.fullName}` })), messages: [] });
+    }
+    case '/api/packages':
+      return { packages: D.packages };
+    case '/api/package/archive': pkg(b.pkg).archived = !!b.archived; return {};
+    case '/api/package/delete': D.packages = D.packages.filter(p => p.name !== b.pkg); return {};
+    case '/api/backup': {
+      const tgtNames = new Set(DEMO_ITEMS.filter(i => i[4] != null).map(i => i[0] + ':' + i[1]));
+      const messages = parsePackageXml(pkg(b.pkg).packageXml).filter(c => !tgtNames.has(key(c)))
+        .map(c => ({ problem: `Entity of type '${c.type}' named '${c.fullName}' cannot be found` }));
+      await demoSleep(1200);
+      return { id: 'bk' + (++D.n), ...demoSf({ messages }) };
+    }
+    case '/api/rollback/prepare': pkg(b.pkg).backups.push(b.meta); return {};
+    case '/api/deploy': {
+      const id = '0AfDM0000' + String(1e6 + Math.floor(Math.random() * 9e6)).slice(0, 7);
+      const p = pkg(b.pkg);
+      const total = b.mode === 'rollback' ? JSON.parse(p.backups.find(x => JSON.parse(x).id === b.backupId)).restored : parsePackageXml(p.packageXml).length;
+      D.jobs[id] = { polls: 0, total, tests: b.testLevel === 'NoTestRun' ? 0 : 38 };
+      return demoSf({ id });
+    }
+    case '/api/report': {
+      const j = D.jobs[b.jobId]; const i = ++j.polls; const done = i >= 4;
+      return demoSf({
+        id: b.jobId, done, status: done ? 'Succeeded' : 'InProgress', stateDetail: done ? '' : i < 2 ? 'Deploying components' : j.tests ? 'Running Apex tests' : 'Deploying components',
+        numberComponentsTotal: j.total, numberComponentsDeployed: done || i >= 2 ? j.total : Math.ceil(j.total / 2), numberComponentErrors: 0,
+        numberTestsTotal: j.tests, numberTestsCompleted: done ? j.tests : i >= 3 ? Math.round(j.tests * 0.6) : 0, numberTestErrors: 0, details: {},
+      });
+    }
+    case '/api/logdeploy': { const p = pkg(b.pkg); p.deploys = (p.deploys ? p.deploys + '\n' : '') + b.line; return {}; }
+    case '/api/cancel': return demoSf({});
+    case '/api/login': case '/api/alias': case '/api/logout':
+      throw new Error('Not available in demo mode. Open HQR Metadata Mover without ?demo to work with your own orgs.');
+    default: return {};   // ping, open, openurl, shutdown
+  }
+}
+
 /* In-page dialogs (instead of the browser's "localhost says" popups). Resolve to true/false, or the typed text/null. */
 let dlgQueue = Promise.resolve();
-function uiDialog(msg, { input = false, value = '', placeholder = '', ok = 'OK', cancel = 'Cancel', danger = false, noCancel = false, title = 'Metadata Mover' } = {}) {
+function uiDialog(msg, { input = false, value = '', placeholder = '', ok = 'OK', cancel = 'Cancel', danger = false, noCancel = false, title = 'HQR Metadata Mover' } = {}) {
   const run = () => new Promise(resolve => {
     const d = $('dlg'), inp = $('dlgInput');
     $('dlgTitle').textContent = title;
@@ -485,6 +696,8 @@ async function loadHealth() {
     $('sfStatus').className = 'badge ' + (h.sf ? 'sbx' : 'prod');
     $('sfMissing').hidden = h.sf;
     if (h.stale) $('staleBanner').hidden = false;
+    if (h.version) $('verLabel').textContent = 'v' + h.version;
+    if (h.dataDir) $('openData').textContent = h.dataDir.replace(/^.*\\(Documents|OneDrive[^\\]*\\Documents)\\/i, 'Documents\\');
     return h.sf;
   } catch (e) {
     $('sfStatus').textContent = 'server not reachable';
@@ -1523,9 +1736,41 @@ function wire() {
     if (name) api('/api/open', { pkg: name }).catch(err => uiAlert(err.message));
   });
   $('btnStop').onclick = async () => {
-    if (!await uiConfirm('Stop Metadata Mover? Running deployments keep going in Salesforce.', { ok: 'Stop Server', danger: true })) return;
+    if (!await uiConfirm('Stop HQR Metadata Mover? Running deployments keep going in Salesforce.', { ok: 'Stop Server', danger: true })) return;
     try { await api('/api/shutdown', {}); } catch { }
-    document.body.innerHTML = '<main><div class="card">Metadata Mover stopped. You can close this tab.</div></main>';
+    clearInterval(pingTimer);
+    window.close();  // closes the app window; a normal browser tab ignores this and shows the message
+    document.body.innerHTML = '<main><div class="card">HQR Metadata Mover stopped. You can close this window. To start it again, use the HQR Metadata Mover shortcut.</div></main>';
+  };
+
+  // Web and email links open in the normal browser (signed in to Salesforce), not inside the app window.
+  document.addEventListener('click', e => {
+    const a = e.target.closest('a[href]');
+    if (!a || !/^(https?:|mailto:)/i.test(a.getAttribute('href'))) return;
+    e.preventDefault();
+    $('shareMenu').hidden = true;
+    api('/api/openurl', { url: a.href }).catch(() => window.open(a.href, '_blank', 'noopener'));
+  }, true);
+  // Checking in tells the server a window is still open; it stops on its own 10 minutes after the last one closes.
+  pingTimer = setInterval(() => api('/api/ping', {}).catch(() => {}), 30000);
+
+  // Footer: open the data folder, and the share menu.
+  $('openData').onclick = e => { e.preventDefault(); api('/api/open', {}).catch(err => uiAlert(err.message)); };
+  const s = encodeURIComponent(SHARE_SUBJECT), b = encodeURIComponent(SHARE_BODY);
+  $('shareGmail').href = `https://mail.google.com/mail/?view=cm&fs=1&su=${s}&body=${b}`;
+  $('shareOutlook').href = `https://outlook.live.com/mail/0/deeplink/compose?subject=${s}&body=${b}`;
+  $('shareMail').href = `mailto:?subject=${s}&body=${b}`;
+  $('btnShare').onclick = e => { e.stopPropagation(); $('shareMenu').hidden = !$('shareMenu').hidden; };
+  document.addEventListener('click', e => { if (!$('shareMenu').hidden && !e.target.closest('#btnShare')) $('shareMenu').hidden = true; });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') $('shareMenu').hidden = true; });
+  $('shareCopy').onclick = async () => {
+    const text = SHARE_SUBJECT + '\n\n' + SHARE_BODY;
+    try { await navigator.clipboard.writeText(text); }
+    catch { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
+    $('shareMenu').hidden = true;
+    const btn = $('btnShare'), html = btn.innerHTML;
+    btn.textContent = 'Copied! Paste it into any message';
+    setTimeout(() => { btn.innerHTML = html; }, 2500);
   };
 }
 
