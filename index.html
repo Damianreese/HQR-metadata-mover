@@ -417,7 +417,7 @@ const DEMO = new URLSearchParams(location.search).has('demo');
 // Where people can download HQR Metadata Mover. Point this at the download page once it exists.
 const SHARE_URL = 'https://quintanillareese.com';
 const SHARE_SUBJECT = 'Try HQR Metadata Mover: free Salesforce deployment tool';
-const SHARE_BODY = "I've been using HQR Metadata Mover, a free Windows tool for moving Salesforce metadata between orgs. " +
+const SHARE_BODY = "I've been using HQR Metadata Mover, a free Windows and Mac tool for moving Salesforce metadata between orgs. " +
   'It finds what you changed (including Experience Cloud sites that Change Sets miss), builds a package, validates, deploys ' +
   'and can roll back.\n\nYou can get it here: ' + SHARE_URL + '\n';
 
@@ -697,7 +697,7 @@ async function loadHealth() {
     $('sfMissing').hidden = h.sf;
     if (h.stale) $('staleBanner').hidden = false;
     if (h.version) $('verLabel').textContent = 'v' + h.version;
-    if (h.dataDir) $('openData').textContent = h.dataDir.replace(/^.*\\(Documents|OneDrive[^\\]*\\Documents)\\/i, 'Documents\\');
+    if (h.dataDir) { const sep = h.dataDir.includes('\\') ? '\\' : '/'; $('openData').textContent = h.dataDir.replace(/^.*[\\/](Documents|OneDrive[^\\/]*[\\/]Documents)[\\/]/i, 'Documents' + sep); }
     return h.sf;
   } catch (e) {
     $('sfStatus').textContent = 'server not reachable';
